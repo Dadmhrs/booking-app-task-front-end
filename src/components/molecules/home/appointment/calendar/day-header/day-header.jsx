@@ -6,16 +6,9 @@ export const DayHeader = () => {
   const [isMobile, setIsMobile] = useState(false);
 
   useEffect(() => {
-    // این کد فقط در سمت کلاینت اجرا می‌شود
     const checkMobile = () => setIsMobile(window.innerWidth < 1024);
-
-    // مقدار اولیه
     checkMobile();
-
-    // listener برای تغییر سایز پنجره
     window.addEventListener('resize', checkMobile);
-
-    // cleanup
     return () => window.removeEventListener('resize', checkMobile);
   }, []);
 

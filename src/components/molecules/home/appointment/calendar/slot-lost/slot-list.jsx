@@ -1,5 +1,6 @@
 import React from 'react';
-import { TimeSlot } from '../../atoms/calendar/TimeSlot';
+//Atoms
+import { TimeSlot } from '../../atoms/calendar/TimeSlot/jsx';
 
 export const SlotList = ({ slots, selectedSlotId, onSlotSelect }) => {
   return (

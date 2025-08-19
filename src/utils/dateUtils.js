@@ -2,7 +2,6 @@ export const dateUtils = {
   formatTime: (timeString, format24h = true, sourceTimeZone = null) => {
     let date;
 
-    // اگر timeString یک زمان ساده است (مثل "10:00")
     if (
       typeof timeString === 'string' &&
       timeString.includes(':') &&
@@ -12,20 +11,7 @@ export const dateUtils = {
       date = new Date();
       date.setHours(parseInt(hours), parseInt(minutes), 0, 0);
     } else {
-      // اگر timeString یک تاریخ کامل است (ISO format)
       date = new Date(timeString);
-    }
-
-    // اگر sourceTimeZone مشخص شده، زمان را به timezone محلی تبدیل کن
-    if (sourceTimeZone) {
-      // این فقط برای نمایش timezone مبدا است - تبدیل واقعی نیاز به library پیچیده‌تری دارد
-      // فعلاً فقط زمان UTC را نمایش می‌دهیم
-      return date.toLocaleTimeString('en-US', {
-        hour: '2-digit',
-        minute: '2-digit',
-        hour12: !format24h,
-        timeZone: 'UTC', // می‌توانید اینجا timezone کلاینت را قرار دهید
-      });
     }
 
     return date.toLocaleTimeString('en-US', {
@@ -35,23 +21,61 @@ export const dateUtils = {
     });
   },
 
-  // تابع جدید برای تبدیل timezone
   convertToClientTimezone: (isoTimeString, sourceTimeZone = 'UTC') => {
     const date = new Date(isoTimeString);
+    const clientTZ = Intl.DateTimeFormat().resolvedOptions().timeZone;
 
-    // تبدیل به timezone محلی مرورگر
+    const utcTime = date.getTime() + date.getTimezoneOffset() * 60000;
+    const localTime = new Date(utcTime);
+
     return {
-      localTime: date.toLocaleTimeString('en-US', {
+      time: localTime.toLocaleTimeString('en-US', {
         hour: '2-digit',
         minute: '2-digit',
         hour12: false,
       }),
-      localDate: date.toLocaleDateString('en-US'),
-      clientTimeZone: Intl.DateTimeFormat().resolvedOptions().timeZone,
+      time12h: localTime.toLocaleTimeString('en-US', {
+        hour: '2-digit',
+        minute: '2-digit',
+        hour12: true,
+      }),
+      date: localTime.toLocaleDateString('en-US'),
+      timezone: clientTZ,
+      offset: date.getTimezoneOffset(),
+      fullDateTime: localTime,
     };
   },
 
-  // تابع برای نمایش زمان با timezone info
+  formatTimeRange: (startISOString, endISOString, showTimezone = true) => {
+    const startLocal = dateUtils.convertToClientTimezone(startISOString);
+    const endLocal = dateUtils.convertToClientTimezone(endISOString);
+
+    const timeRange = `${startLocal.time} - ${endLocal.time}`;
+
+    if (showTimezone) {
+      return `${timeRange} (${startLocal.timezone})`;
+    }
+
+    return timeRange;
+  },
+
+  calculateDuration: (startISOString, endISOString) => {
+    const start = new Date(startISOString);
+    const end = new Date(endISOString);
+    const durationMs = end.getTime() - start.getTime();
+    const durationMinutes = Math.floor(durationMs / (1000 * 60));
+
+    if (durationMinutes >= 60) {
+      const hours = Math.floor(durationMinutes / 60);
+      const remainingMinutes = durationMinutes % 60;
+      return remainingMinutes > 0
+        ? `${hours}h ${remainingMinutes}m`
+        : `${hours}h`;
+    }
+
+    return `${durationMinutes}m`;
+  },
+
   formatTimeWithTimezone: (isoTimeString, sourceTimeZone = null) => {
     const date = new Date(isoTimeString);
     const clientTZ = Intl.DateTimeFormat().resolvedOptions().timeZone;
@@ -127,22 +151,15 @@ export const dateUtils = {
     return days;
   },
 
-  // تابع بهبود یافته برای مقایسه تاریخ
   isSameDate: (dateString1, dateString2) => {
     if (!dateString1 || !dateString2) return false;
-
-    console.log('Comparing dates:', { dateString1, dateString2 });
 
     const formatDate = (dateStr) => {
       let date;
 
-      // اگر ورودی یک Date object است
       if (dateStr instanceof Date) {
         date = dateStr;
-      }
-      // اگر ورودی یک string است
-      else if (typeof dateStr === 'string') {
-        // اگر فرمت YYYY-MM-DD است
+      } else if (typeof dateStr === 'string') {
         if (/^\d{4}-\d{2}-\d{2}$/.test(dateStr)) {
           date = new Date(dateStr + 'T00:00:00');
         } else {
@@ -152,13 +169,10 @@ export const dateUtils = {
         return null;
       }
 
-      // فرمت به YYYY-MM-DD
       const year = date.getFullYear();
       const month = String(date.getMonth() + 1).padStart(2, '0');
       const day = String(date.getDate()).padStart(2, '0');
       const formatted = `${year}-${month}-${day}`;
-
-      console.log('Formatted date:', { input: dateStr, output: formatted });
       return formatted;
     };
 
@@ -166,12 +180,9 @@ export const dateUtils = {
     const formatted2 = formatDate(dateString2);
 
     const result = formatted1 === formatted2;
-    console.log('Date comparison result:', { formatted1, formatted2, result });
-
     return result;
   },
 
-  // تابع برای فرمت تاریخ به YYYY-MM-DD
   formatToYYYYMMDD: (date) => {
     const d = date instanceof Date ? date : new Date(date);
     const year = d.getFullYear();

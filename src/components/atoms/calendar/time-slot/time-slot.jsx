@@ -1,5 +1,7 @@
 import React from 'react';
 import { Clock } from 'lucide-react';
+//Utils
+import { dateUtils } from '@/utils/dateUtils';
 
 export const TimeSlot = ({
   slot,
@@ -9,6 +11,9 @@ export const TimeSlot = ({
   isMobile = false,
 }) => {
   const isClickable = slot.status === 'available';
+
+  const startTimeLocal = dateUtils.convertToClientTimezone(slot.start);
+  const endTimeLocal = dateUtils.convertToClientTimezone(slot.end);
 
   const getSlotColor = () => {
     if (isSelected) return 'bg-blue-600 text-white border-blue-600';
@@ -38,9 +43,14 @@ export const TimeSlot = ({
         <div className="flex items-center justify-between mb-2">
           <div className="flex items-center gap-2">
             <Clock className="w-4 h-4" />
-            <span className="font-medium">
-              {slot.startTime} - {slot.endTime}
-            </span>
+            <div className="flex flex-col">
+              <span className="font-medium">
+                {startTimeLocal.time} - {endTimeLocal.time}
+              </span>
+              <span className="text-xs text-gray-500">
+                {startTimeLocal.timezone}
+              </span>
+            </div>
           </div>
           <span className="font-bold text-lg">${slot.price}</span>
         </div>
@@ -85,12 +95,19 @@ export const TimeSlot = ({
         />
         <span className="font-medium truncate">{consultant.name}</span>
       </div>
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col gap-1">
         <div className="flex items-center gap-1">
           <Clock className="w-3 h-3" />
-          <span>{slot.startTime}</span>
+          <span className="font-medium">
+            {startTimeLocal.time} - {endTimeLocal.time}
+          </span>
         </div>
-        <span className="font-semibold">${slot.price}</span>
+        <div className="flex items-center justify-between">
+          <span className="text-xs text-gray-500">
+            {startTimeLocal.timezone}
+          </span>
+          <span className="font-semibold">${slot.price}</span>
+        </div>
       </div>
       {slot.status === 'reserved' && (
         <div className="text-xs text-red-600 mt-1 truncate">Reserved</div>

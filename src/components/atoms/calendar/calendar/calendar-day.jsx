@@ -1,6 +1,8 @@
 import React from 'react';
-import { dateUtils } from '@/utils/dateUtils';
-import { ViewType } from '@/types/calendar';
+//Types
+import { ViewType } from '@/types/calendar.js';
+//Utils
+import { dateUtils } from '@/utils/dateUtils.js';
 
 export const CalendarDay = ({
   day,
@@ -9,14 +11,11 @@ export const CalendarDay = ({
   onSlotSelect,
   selectedSlotId,
 }) => {
-  // ابتدا متغیرهای view را تعریف می‌کنیم
   const isWeekView = view === ViewType.WEEK;
   const isDayView = view === ViewType.DAY;
 
-  // فرمت تاریخ روز جاری به YYYY-MM-DD
   const dayDateString = dateUtils.formatToYYYYMMDD(day.date);
 
-  // پیدا کردن اسلات‌های مربوط به این روز
   const daySlots = slots.filter((slotData) => {
     const slot = slotData.slot;
     return dateUtils.isSameDate(slot.date, dayDateString);
@@ -46,7 +45,6 @@ export const CalendarDay = ({
         p-1 sm:p-2
       `}
     >
-      {/* تاریخ روز */}
       <div className="flex items-center justify-between mb-1 sm:mb-2">
         <span
           className={`
@@ -68,12 +66,15 @@ export const CalendarDay = ({
         )}
       </div>
 
-      {/* نمایش اسلات‌ها */}
       <div className="space-y-1">
         {daySlots.map((slotData, index) => {
           const slot = slotData.slot;
           const consultant = slotData.consultant;
           const isSelected = selectedSlotId === slot.id;
+
+          const startTimeLocal = dateUtils.convertToClientTimezone(slot.start);
+          const endTimeLocal = dateUtils.convertToClientTimezone(slot.end);
+          const duration = dateUtils.calculateDuration(slot.start, slot.end);
 
           return (
             <div
@@ -92,11 +93,18 @@ export const CalendarDay = ({
               `}
             >
               <div className="flex flex-col">
-                <span className="font-medium truncate">{slot.startTime}</span>
+                <span className="font-medium truncate">
+                  {startTimeLocal.time} - {endTimeLocal.time}
+                </span>
                 {(isWeekView || isDayView) && (
-                  <span className="text-xs opacity-75 truncate">
-                    {consultant.name}
-                  </span>
+                  <>
+                    <span className="text-xs opacity-75 truncate">
+                      {consultant.name}
+                    </span>
+                    <span className="text-xs opacity-60">
+                      {duration} • {startTimeLocal.timezone}
+                    </span>
+                  </>
                 )}
               </div>
             </div>
@@ -104,7 +112,6 @@ export const CalendarDay = ({
         })}
       </div>
 
-      {/* نمایش "No slots" در صورت عدم وجود اسلات */}
       {!hasSlots && day.isCurrentMonth && (isWeekView || isDayView) && (
         <div className="text-xs text-gray-400 mt-2">No available slots</div>
       )}

@@ -4,7 +4,7 @@ import { useParams } from 'next/navigation';
 import { useMemo } from 'react';
 
 //Organisms
-import AppointmentDate from '@/components/organisms/appointment/date';
+import AppointmentDate from '@/components/organisms/appointment/date/date';
 //Mocks
 import Consultants from '@/mocks/consultants.js';
 

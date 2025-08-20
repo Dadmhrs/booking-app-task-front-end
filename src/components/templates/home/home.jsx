@@ -1,11 +1,11 @@
 'use client';
 
 import { useEffect, useRef, useState } from 'react';
-//Molecules
+// Molecules
 import ConsultantCard from '@/components/molecules/home/consultars/consultars.jsx';
-//Organisms
+// Organisms
 import HomePageFilter from '@/components/organisms/home/filter/filter.jsx';
-//Hooks
+// Hooks
 import Consultants from '@/mocks/consultants.js';
 
 const Home = () => {
@@ -107,7 +107,7 @@ const Home = () => {
                 titleVisible
                   ? 'opacity-100 translate-y-0'
                   : 'opacity-0 translate-y-8'
-              } lg:z-auto z-[-1]`}
+              }`}
             >
               <h1 className="font-Sora text-2xl md:text-2xl lg:text-3xl font-medium text-gray-800 leading-relaxed mb-4 select-none cursor-default">
                 Choose your advisor and select the date
@@ -142,7 +142,7 @@ const Home = () => {
                   key={`${consultant.id}-${selectedDay}`}
                   ref={(el) => (cardRefs.current[index] = el)}
                   data-index={index}
-                  className={`transform transition-all duration-700 ease-out z-[-1] lg:z-auto relative ${
+                  className={`transform transition-all duration-700 ease-out relative ${
                     visibleCards.has(index)
                       ? 'opacity-100 translate-y-0 scale-100'
                       : 'opacity-0 translate-y-8 scale-95'

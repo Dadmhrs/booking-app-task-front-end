@@ -1,117 +1,152 @@
-import React from 'react';
-import { Clock } from 'lucide-react';
-//Utils
-import { dateUtils } from '@/utils/dateUtils';
+import { useState, useMemo } from 'react';
+// Utils
+import { dateUtils } from '../utils/dateUtils.js';
 
-export const TimeSlot = ({
-  slot,
-  consultant,
-  isSelected = false,
-  onSelect,
-  isMobile = false,
-}) => {
-  const isClickable = slot.status === 'available';
+export const useSlots = (consultantId, consultants) => {
+  const [selectedSlot, setSelectedSlot] = useState(null);
+  const [selectedConsultant, setSelectedConsultant] = useState(null);
 
-  const startTimeLocal = dateUtils.convertToClientTimezone(slot.start);
-  const endTimeLocal = dateUtils.convertToClientTimezone(slot.end);
+  const consultant = useMemo(() => {
+    let foundConsultant = null;
 
-  const getSlotColor = () => {
-    if (isSelected) return 'bg-blue-600 text-white border-blue-600';
-    if (slot.status === 'available')
-      return 'bg-green-50 text-green-800 border-green-200 hover:bg-green-100';
-    if (slot.status === 'reserved')
-      return 'bg-red-50 text-red-800 border-red-200 cursor-not-allowed';
-    if (slot.status === 'pending')
-      return 'bg-yellow-50 text-yellow-800 border-yellow-200';
-    return 'bg-gray-50 text-gray-600 border-gray-200';
-  };
+    if (consultantId && typeof consultantId === 'object' && consultantId.id) {
+      foundConsultant = consultantId;
+    } else if (Array.isArray(consultants)) {
+      foundConsultant = consultants.find((c) => c.id === consultantId) || null;
+    } else if (
+      consultants &&
+      typeof consultants === 'object' &&
+      consultants.id
+    ) {
+      foundConsultant = consultants;
+    }
+    return foundConsultant;
+  }, [consultantId, consultants]);
 
-  const handleClick = () => {
-    if (isClickable) {
-      onSelect(slot, consultant);
+  const slots = useMemo(() => {
+    const slotsArray = [];
+    if (consultant && consultant.meetings) {
+      consultant.meetings.forEach((meeting, index) => {
+        const startDate = new Date(meeting.start);
+        const endDate = new Date(meeting.end);
+
+        if (isNaN(startDate.getTime()) || isNaN(endDate.getTime())) {
+          console.warn('Invalid meeting time:', meeting);
+          return;
+        }
+
+        const meetingDate = dateUtils.formatToYYYYMMDD(startDate);
+        const timeComparison = dateUtils.formatTimeComparison(
+          meeting.start,
+          consultant.timeZone,
+        );
+        const timeRange = dateUtils.formatTimeRange(
+          meeting.start,
+          meeting.end,
+          consultant.timeZone,
+          true,
+        );
+
+        if (!timeComparison || !meetingDate) {
+          console.warn('Failed to process meeting:', meeting);
+          return;
+        }
+
+        const slot = {
+          id: meeting.id || `${consultant.id}-${meetingDate}-${index}`,
+          date: meetingDate,
+          start: meeting.start,
+          end: meeting.end,
+
+          clientStartTime: timeComparison.client.time,
+          clientEndTime: dateUtils.formatTimeComparison(
+            meeting.end,
+            consultant.timeZone,
+          ).client.time,
+          clientTimezone: timeComparison.client.timezone,
+
+          consultantStartTime: timeComparison.consultant.time,
+          consultantEndTime: dateUtils.formatTimeComparison(
+            meeting.end,
+            consultant.timeZone,
+          ).consultant.time,
+          consultantTimezone: consultant.timeZone,
+
+          timeRange: timeRange,
+          clientTimeRange: timeRange.clientOnly,
+          consultantTimeRange: timeRange.consultantOnly,
+
+          duration: dateUtils.calculateDuration(meeting.start, meeting.end),
+          status: meeting.status || 'available',
+          price: meeting.price || 150,
+
+          startTime: timeComparison.client.time,
+          endTime: dateUtils.formatTimeComparison(
+            meeting.end,
+            consultant.timeZone,
+          ).client.time,
+          startTimeOriginal: dateUtils.formatTime(meeting.start),
+          endTimeOriginal: dateUtils.formatTime(meeting.end),
+        };
+
+        slotsArray.push({
+          slot,
+          consultant,
+        });
+      });
+    }
+    return slotsArray;
+  }, [consultant]);
+
+  const handleSlotSelect = (slot, consultant) => {
+    if (slot && slot.status === 'available') {
+      setSelectedSlot(slot);
+      setSelectedConsultant(consultant);
+    } else {
+      setSelectedSlot(null);
+      setSelectedConsultant(null);
     }
   };
 
-  if (isMobile) {
-    return (
-      <div
-        onClick={handleClick}
-        className={`p-4 rounded-lg cursor-pointer transition-all duration-200 border ${getSlotColor()} ${
-          !isClickable ? 'opacity-60' : ''
-        }`}
-      >
-        <div className="flex items-center justify-between mb-2">
-          <div className="flex items-center gap-2">
-            <Clock className="w-4 h-4" />
-            <div className="flex flex-col">
-              <span className="font-medium">
-                {startTimeLocal.time} - {endTimeLocal.time}
-              </span>
-              <span className="text-xs text-gray-500">
-                {startTimeLocal.timezone}
-              </span>
-            </div>
-          </div>
-          <span className="font-bold text-lg">${slot.price}</span>
-        </div>
+  const handleBooking = () => {
+    if (selectedSlot && selectedConsultant) {
+      const bookingDate = dateUtils.formatDate(selectedSlot.start, {
+        weekday: 'long',
+        month: 'long',
+        day: 'numeric',
+      });
 
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-2">
-            <img
-              src={consultant.image}
-              alt={consultant.name}
-              className="w-6 h-6 rounded-full"
-            />
-            <span className="text-sm font-medium">{consultant.name}</span>
-          </div>
-          <span
-            className={`text-xs px-2 py-1 rounded-full ${
-              slot.status === 'available'
-                ? 'bg-green-100 text-green-700'
-                : slot.status === 'reserved'
-                ? 'bg-red-100 text-red-700'
-                : 'bg-yellow-100 text-yellow-700'
-            }`}
-          >
-            {slot.status === 'reserved' ? 'Reserved' : slot.status}
-          </span>
-        </div>
-      </div>
-    );
-  }
+      const timeInfo = selectedSlot.timeRange;
+      let timeDisplay = '';
 
-  return (
-    <div
-      onClick={handleClick}
-      className={`text-xs p-2 rounded-md cursor-pointer transition-all duration-200 border ${getSlotColor()} ${
-        !isClickable ? 'opacity-60' : ''
-      }`}
-    >
-      <div className="flex items-center gap-1.5 mb-1">
-        <img
-          src={consultant.image}
-          alt={consultant.name}
-          className="w-4 h-4 rounded-full"
-        />
-        <span className="font-medium truncate">{consultant.name}</span>
-      </div>
-      <div className="flex flex-col gap-1">
-        <div className="flex items-center gap-1">
-          <Clock className="w-3 h-3" />
-          <span className="font-medium">
-            {startTimeLocal.time} - {endTimeLocal.time}
-          </span>
-        </div>
-        <div className="flex items-center justify-between">
-          <span className="text-xs text-gray-500">
-            {startTimeLocal.timezone}
-          </span>
-          <span className="font-semibold">${slot.price}</span>
-        </div>
-      </div>
-      {slot.status === 'reserved' && (
-        <div className="text-xs text-red-600 mt-1 truncate">Reserved</div>
-      )}
-    </div>
-  );
+      if (
+        typeof timeInfo === 'object' &&
+        timeInfo.client !== timeInfo.consultant
+      ) {
+        timeDisplay = `Client Time: ${timeInfo.client}\nConsultant Time: ${timeInfo.consultant}`;
+      } else {
+        timeDisplay = typeof timeInfo === 'object' ? timeInfo.client : timeInfo;
+      }
+
+      alert(
+        `Session booked with ${selectedConsultant.name}\n` +
+          `Date: ${bookingDate}\n` +
+          `${timeDisplay}\n` +
+          `Duration: ${selectedSlot.duration}\n` +
+          `Price: $${selectedSlot.price}`,
+      );
+
+      setSelectedSlot(null);
+      setSelectedConsultant(null);
+    }
+  };
+
+  return {
+    slots,
+    selectedSlot,
+    selectedConsultant,
+    handleSlotSelect,
+    handleBooking,
+    consultant,
+  };
 };

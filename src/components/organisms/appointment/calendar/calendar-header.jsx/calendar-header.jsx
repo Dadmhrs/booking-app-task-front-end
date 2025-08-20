@@ -1,5 +1,6 @@
 import React from 'react';
 import { Calendar, ChevronLeft, ChevronRight } from 'lucide-react';
+// Types
 import { ViewType } from '../../../../../types/calendar.js';
 
 const monthNames = [
@@ -28,37 +29,37 @@ export const CalendarHeader = ({
     <div className="space-y-6">
       {consultant && (
         <div className="bg-white rounded-lg border border-gray-200 p-6">
-          <div className="flex items-center gap-4">
+          <div className="flex flex-col items-center text-center gap-4 lg:flex-row lg:items-center lg:text-left">
             <img
-              src={consultant.image}
-              alt={consultant.name}
-              className="w-16 h-16 rounded-full object-cover border-2 border-gray-100"
+              src={consultant.image || '/images/default-avatar.png'}
+              alt={consultant.name || 'Consultant'}
+              className="w-20 h-20 rounded-full object-cover border-2 border-gray-100"
             />
-            <div className="flex-1">
+            <div className="flex-1 flex flex-col items-center lg:items-start">
               <h2 className="text-xl font-semibold text-gray-800">
                 {consultant.name}
               </h2>
-              <p className="text-gray-600 text-sm mt-1">
-                {consultant.description}
-              </p>
+              {consultant.description && (
+                <p className="text-gray-600 text-sm mt-2 max-w-prose">
+                  {consultant.description}
+                </p>
+              )}
               <p className="text-xs text-gray-500 mt-2">
-                Timezone: {consultant.timeZone}
+                Timezone: {consultant.timeZone || consultant.timezone}
               </p>
             </div>
           </div>
         </div>
       )}
-
-      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
-        <div>
-          <h1 className="text-2xl sm:text-3xl font-bold text-gray-900 flex items-center gap-3">
+      <div className="flex flex-col items-center gap-4 lg:flex-row lg:items-center lg:justify-between">
+        <div className="text-center lg:text-left">
+          <h1 className="text-2xl lg:text-3xl font-bold text-gray-900 flex items-center justify-center gap-3 lg:justify-start">
             <Calendar className="w-7 h-7 text-blue-600" />
             Select Date & Time
           </h1>
           <p className="text-gray-600 mt-1">Choose your preferred time slot</p>
         </div>
-
-        <div className="flex items-center gap-4">
+        <div className="flex flex-col items-center gap-3 lg:flex-row lg:items-center">
           <div className="flex bg-gray-100 rounded-lg p-1">
             {Object.values(ViewType).map((viewType) => (
               <button
@@ -74,8 +75,7 @@ export const CalendarHeader = ({
               </button>
             ))}
           </div>
-
-          <div className="flex items-center gap-1">
+          <div className="flex items-center gap-2">
             <button
               onClick={() => onNavigate(-1)}
               className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
@@ -84,7 +84,7 @@ export const CalendarHeader = ({
               <ChevronLeft className="w-5 h-5" />
             </button>
 
-            <h2 className="text-lg font-semibold text-gray-800 min-w-[140px] text-center">
+            <h2 className="text-lg font-semibold text-gray-800 min-w-[160px] text-center">
               {monthNames[currentDate.getMonth()]} {currentDate.getFullYear()}
             </h2>
 

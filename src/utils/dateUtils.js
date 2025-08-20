@@ -1,67 +1,168 @@
 export const dateUtils = {
-  formatTime: (timeString, format24h = true, sourceTimeZone = null) => {
-    let date;
+  parseTimezoneOffset: (timezoneStr) => {
+    if (!timezoneStr) return 0;
 
-    if (
-      typeof timeString === 'string' &&
-      timeString.includes(':') &&
-      !timeString.includes('T')
-    ) {
-      const [hours, minutes] = timeString.split(':');
-      date = new Date();
-      date.setHours(parseInt(hours), parseInt(minutes), 0, 0);
-    } else {
-      date = new Date(timeString);
+    const match = timezoneStr.match(/UTC([+-])(\d+)/);
+    if (match) {
+      const sign = match[1] === '+' ? 1 : -1;
+      const hours = parseInt(match[2]);
+      return sign * hours;
     }
-
-    return date.toLocaleTimeString('en-US', {
-      hour: '2-digit',
-      minute: '2-digit',
-      hour12: !format24h,
-    });
+    return 0;
   },
 
-  convertToClientTimezone: (isoTimeString, sourceTimeZone = 'UTC') => {
-    const date = new Date(isoTimeString);
+  consultantTimeToUTC: (isoTimeString, consultantTimezone) => {
+    if (!isoTimeString) return null;
+
+    const localTime = new Date(isoTimeString);
+    if (isNaN(localTime.getTime())) return null;
+
+    const consultantOffsetHours =
+      dateUtils.parseTimezoneOffset(consultantTimezone);
+
+    const utcTime = new Date(
+      localTime.getTime() - consultantOffsetHours * 60 * 60 * 1000,
+    );
+
+    return utcTime;
+  },
+
+  convertToClientTimezone: (isoTimeString, consultantTimezone = 'UTC') => {
+    if (!isoTimeString) return null;
+
+    const utcDate = dateUtils.consultantTimeToUTC(
+      isoTimeString,
+      consultantTimezone,
+    );
+    if (!utcDate) return null;
+
     const clientTZ = Intl.DateTimeFormat().resolvedOptions().timeZone;
 
-    const utcTime = date.getTime() + date.getTimezoneOffset() * 60000;
-    const localTime = new Date(utcTime);
-
     return {
-      time: localTime.toLocaleTimeString('en-US', {
+      time: utcDate.toLocaleTimeString('en-US', {
+        timeZone: clientTZ,
         hour: '2-digit',
         minute: '2-digit',
         hour12: false,
       }),
-      time12h: localTime.toLocaleTimeString('en-US', {
+      time12h: utcDate.toLocaleTimeString('en-US', {
+        timeZone: clientTZ,
         hour: '2-digit',
         minute: '2-digit',
         hour12: true,
       }),
-      date: localTime.toLocaleDateString('en-US'),
+      date: utcDate.toLocaleDateString('en-US', {
+        timeZone: clientTZ,
+      }),
       timezone: clientTZ,
-      offset: date.getTimezoneOffset(),
-      fullDateTime: localTime,
+      fullDateTime: new Date(
+        utcDate.toLocaleString('en-US', { timeZone: clientTZ }),
+      ),
+      utcTime: utcDate,
     };
   },
 
-  formatTimeRange: (startISOString, endISOString, showTimezone = true) => {
-    const startLocal = dateUtils.convertToClientTimezone(startISOString);
-    const endLocal = dateUtils.convertToClientTimezone(endISOString);
+  formatConsultantTime: (isoTimeString, consultantTimezone) => {
+    if (!isoTimeString)
+      return { time: 'Invalid', timezone: consultantTimezone };
 
-    const timeRange = `${startLocal.time} - ${endLocal.time}`;
+    const date = new Date(isoTimeString);
+    if (isNaN(date.getTime()))
+      return { time: 'Invalid', timezone: consultantTimezone };
 
-    if (showTimezone) {
-      return `${timeRange} (${startLocal.timezone})`;
+    return {
+      time: date.toLocaleTimeString('en-US', {
+        hour: '2-digit',
+        minute: '2-digit',
+        hour12: false,
+      }),
+      time12h: date.toLocaleTimeString('en-US', {
+        hour: '2-digit',
+        minute: '2-digit',
+        hour12: true,
+      }),
+      timezone: consultantTimezone,
+    };
+  },
+
+  formatTimeComparison: (isoTimeString, consultantTimezone) => {
+    const consultantTime = dateUtils.formatConsultantTime(
+      isoTimeString,
+      consultantTimezone,
+    );
+    const clientTime = dateUtils.convertToClientTimezone(
+      isoTimeString,
+      consultantTimezone,
+    );
+
+    if (!clientTime) return null;
+
+    return {
+      consultant: consultantTime,
+      client: clientTime,
+      isSameTime: consultantTime.time === clientTime.time,
+      timeDifference: dateUtils.calculateTimeDifference(
+        consultantTimezone,
+        clientTime.timezone,
+      ),
+    };
+  },
+
+  calculateTimeDifference: (consultantTZ, clientTZ) => {
+    const consultantOffset = dateUtils.parseTimezoneOffset(consultantTZ);
+
+    const now = new Date();
+    const clientOffsetMinutes = now.getTimezoneOffset();
+    const clientOffsetHours = -clientOffsetMinutes / 60;
+
+    return consultantOffset - clientOffsetHours;
+  },
+
+  formatTimeRange: (
+    startISOString,
+    endISOString,
+    consultantTimezone,
+    showBothTimezones = true,
+  ) => {
+    const startComparison = dateUtils.formatTimeComparison(
+      startISOString,
+      consultantTimezone,
+    );
+    const endComparison = dateUtils.formatTimeComparison(
+      endISOString,
+      consultantTimezone,
+    );
+
+    if (!startComparison || !endComparison) return 'Invalid Time Range';
+
+    const clientRange = `${startComparison.client.time} - ${endComparison.client.time}`;
+    const consultantRange = `${startComparison.consultant.time} - ${endComparison.consultant.time}`;
+
+    if (showBothTimezones && !startComparison.isSameTime) {
+      return {
+        client: `${clientRange} (${startComparison.client.timezone})`,
+        consultant: `${consultantRange} (${consultantTimezone})`,
+        clientOnly: clientRange,
+        consultantOnly: consultantRange,
+      };
     }
 
-    return timeRange;
+    return {
+      client: `${clientRange} (${startComparison.client.timezone})`,
+      consultant: consultantRange,
+      clientOnly: clientRange,
+      consultantOnly: consultantRange,
+    };
   },
 
   calculateDuration: (startISOString, endISOString) => {
     const start = new Date(startISOString);
     const end = new Date(endISOString);
+
+    if (isNaN(start.getTime()) || isNaN(end.getTime())) {
+      return 'Invalid Duration';
+    }
+
     const durationMs = end.getTime() - start.getTime();
     const durationMinutes = Math.floor(durationMs / (1000 * 60));
 
@@ -76,36 +177,91 @@ export const dateUtils = {
     return `${durationMinutes}m`;
   },
 
-  formatTimeWithTimezone: (isoTimeString, sourceTimeZone = null) => {
-    const date = new Date(isoTimeString);
-    const clientTZ = Intl.DateTimeFormat().resolvedOptions().timeZone;
+  formatTime: (timeString, format24h = true) => {
+    let date;
 
-    const localTime = date.toLocaleTimeString('en-US', {
+    if (
+      typeof timeString === 'string' &&
+      timeString.includes(':') &&
+      !timeString.includes('T')
+    ) {
+      const [hours, minutes] = timeString.split(':');
+      date = new Date();
+      date.setHours(parseInt(hours), parseInt(minutes), 0, 0);
+    } else {
+      date = new Date(timeString);
+    }
+
+    if (isNaN(date.getTime())) {
+      return 'Invalid Time';
+    }
+
+    return date.toLocaleTimeString('en-US', {
       hour: '2-digit',
       minute: '2-digit',
-      hour12: false,
+      hour12: !format24h,
     });
-
-    return {
-      time: localTime,
-      timezone: clientTZ,
-      offset: date.getTimezoneOffset(),
-    };
   },
 
   formatDate: (dateString, options = { month: 'short', day: 'numeric' }) => {
     const date = new Date(dateString);
+    if (isNaN(date.getTime())) {
+      return 'Invalid Date';
+    }
     return date.toLocaleDateString('en-US', options);
+  },
+
+  formatToYYYYMMDD: (date) => {
+    const d = date instanceof Date ? date : new Date(date);
+    if (isNaN(d.getTime())) return null;
+
+    const year = d.getFullYear();
+    const month = String(d.getMonth() + 1).padStart(2, '0');
+    const day = String(d.getDate()).padStart(2, '0');
+    return `${year}-${month}-${day}`;
   },
 
   isSameDay: (date1, date2) => {
     const d1 = new Date(date1);
     const d2 = new Date(date2);
+    if (isNaN(d1.getTime()) || isNaN(d2.getTime())) return false;
     return d1.toDateString() === d2.toDateString();
   },
 
   isToday: (date) => {
     return dateUtils.isSameDay(date, new Date());
+  },
+
+  isSameDate: (dateString1, dateString2) => {
+    if (!dateString1 || !dateString2) return false;
+
+    const formatDate = (dateStr) => {
+      let date;
+
+      if (dateStr instanceof Date) {
+        date = dateStr;
+      } else if (typeof dateStr === 'string') {
+        if (/^\d{4}-\d{2}-\d{2}$/.test(dateStr)) {
+          date = new Date(dateStr + 'T00:00:00');
+        } else {
+          date = new Date(dateStr);
+        }
+      } else {
+        return null;
+      }
+
+      if (isNaN(date.getTime())) return null;
+
+      const year = date.getFullYear();
+      const month = String(date.getMonth() + 1).padStart(2, '0');
+      const day = String(date.getDate()).padStart(2, '0');
+      return `${year}-${month}-${day}`;
+    };
+
+    const formatted1 = formatDate(dateString1);
+    const formatted2 = formatDate(dateString2);
+
+    return formatted1 && formatted2 && formatted1 === formatted2;
   },
 
   getMonthDays: (currentDate) => {
@@ -149,45 +305,5 @@ export const dateUtils = {
     }
 
     return days;
-  },
-
-  isSameDate: (dateString1, dateString2) => {
-    if (!dateString1 || !dateString2) return false;
-
-    const formatDate = (dateStr) => {
-      let date;
-
-      if (dateStr instanceof Date) {
-        date = dateStr;
-      } else if (typeof dateStr === 'string') {
-        if (/^\d{4}-\d{2}-\d{2}$/.test(dateStr)) {
-          date = new Date(dateStr + 'T00:00:00');
-        } else {
-          date = new Date(dateStr);
-        }
-      } else {
-        return null;
-      }
-
-      const year = date.getFullYear();
-      const month = String(date.getMonth() + 1).padStart(2, '0');
-      const day = String(date.getDate()).padStart(2, '0');
-      const formatted = `${year}-${month}-${day}`;
-      return formatted;
-    };
-
-    const formatted1 = formatDate(dateString1);
-    const formatted2 = formatDate(dateString2);
-
-    const result = formatted1 === formatted2;
-    return result;
-  },
-
-  formatToYYYYMMDD: (date) => {
-    const d = date instanceof Date ? date : new Date(date);
-    const year = d.getFullYear();
-    const month = String(d.getMonth() + 1).padStart(2, '0');
-    const day = String(d.getDate()).padStart(2, '0');
-    return `${year}-${month}-${day}`;
   },
 };

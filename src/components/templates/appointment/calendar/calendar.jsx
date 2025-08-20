@@ -1,9 +1,9 @@
 import React from 'react';
-//Organisms
+// Organisms
 import { CalendarHeader } from '@/components/organisms/appointment/calendar/calendar-header.jsx/calendar-header.jsx';
 import { CalendarGrid } from '@/components/organisms/appointment/calendar/calendar-grid/calendar-grid.jsx';
 import { BookingConfirmation } from '@/components/organisms/appointment/calendar/booking-confirmation/booking.jsx';
-//Hooks
+// Hooks
 import { useCalendar } from '@/hooks/useCalendar.js';
 import { useSlots } from '@/hooks/useSlots.js';
 
@@ -17,7 +17,6 @@ export const CalendarLayout = ({ consultantId, consultants }) => {
     handleBooking,
   } = useSlots(consultantId, consultants);
 
-  // تشخیص consultant برای نمایش در header
   const displayConsultant = (() => {
     if (consultantId && typeof consultantId === 'object' && consultantId.id) {
       return consultantId;

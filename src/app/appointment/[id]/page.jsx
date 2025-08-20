@@ -1,6 +1,6 @@
 import React from 'react';
 
-//Templates
+// Templates
 import Appointment from '@/components/templates/appointment/appointment';
 
 const AppointmentPage = () => {

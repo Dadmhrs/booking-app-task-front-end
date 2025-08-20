@@ -1,7 +1,7 @@
 import { useState, useCallback, useMemo } from 'react';
-//Types
+// Types
 import { ViewType } from '../types/calendar';
-//Utils
+// Utils
 import { dateUtils } from '../utils/dateUtils';
 
 export const useCalendar = (initialView = ViewType.MONTH) => {

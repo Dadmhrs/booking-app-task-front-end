@@ -1,7 +1,7 @@
 import React from 'react';
-//Atoms
+// Atoms
 import { CalendarDay } from '@/components/atoms/calendar/calendar/calendar-day.jsx';
-//Molecules
+// Molecules
 import { DayHeader } from '@/components/molecules/home/appointment/calendar/day-header/day-header.jsx';
 
 export const CalendarGrid = ({

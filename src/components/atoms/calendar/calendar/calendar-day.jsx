@@ -42,13 +42,13 @@ export const CalendarDay = ({
             ? 'min-h-[300px]'
             : 'min-h-[120px]'
         }
-        p-1 sm:p-2
+        p-0.5 xs:p-1 sm:p-2
       `}
     >
-      <div className="flex items-center justify-between mb-1 sm:mb-2">
+      <div className="flex items-center justify-between mb-0.5 xs:mb-1 sm:mb-2">
         <span
           className={`
-            text-[10px] sm:text-xs md:text-sm font-medium
+            text-[9px] xs:text-[10px] sm:text-xs md:text-sm font-medium
             ${
               !day.isCurrentMonth
                 ? 'text-gray-400'
@@ -62,11 +62,11 @@ export const CalendarDay = ({
           {day.date.getDate()}
         </span>
         {hasSlots && (
-          <span className="w-2 h-2 bg-green-400 rounded-full"></span>
+          <span className="w-1.5 h-1.5 xs:w-2 xs:h-2 bg-green-400 rounded-full"></span>
         )}
       </div>
 
-      <div className="space-y-2 flex flex-col items-center">
+      <div className="space-y-1 xs:space-y-2">
         {daySlots.map((slotData, index) => {
           const slot = slotData.slot;
           const consultant = slotData.consultant;
@@ -90,9 +90,9 @@ export const CalendarDay = ({
               key={`${slot.id}-${index}`}
               onClick={() => onSlotSelect(slot, consultant)}
               className={`
-                cursor-pointer rounded-lg px-2 py-2 w-full max-w-[200px]
+                cursor-pointer rounded-md xs:rounded-lg px-1 xs:px-1.5 sm:px-2 
+                py-1 xs:py-1.5 sm:py-2 w-full
                 transition-all duration-200
-                flex flex-col items-center text-center
                 ${
                   slot.status === 'available'
                     ? isSelected
@@ -102,39 +102,76 @@ export const CalendarDay = ({
                 }
               `}
             >
-              <div className="w-8 h-8 sm:w-10 sm:h-10 md:w-12 md:h-12 rounded-full overflow-hidden border-2 border-white shadow-md mb-2">
-                <img
-                  src={consultant.image || '/images/default-avatar.png'}
-                  alt={consultant.name}
-                  className="w-full h-full object-cover"
-                />
-              </div>
-              <span className="font-medium text-[10px] sm:text-xs md:text-sm mb-1">
-                {displayTime}
-              </span>
-
-              {(isWeekView || isDayView) && (
-                <>
-                  <span className="text-[10px] sm:text-xs md:text-sm font-semibold mb-1">
-                    {consultant.name}
-                  </span>
-                  <div className="text-[9px] sm:text-xs opacity-75 flex flex-col items-center">
-                    <span className="mb-1">{duration}</span>
-                    <span className="font-medium text-blue-600 bg-blue-50 px-2 py-0.5 rounded-full">
-                      {clientTimezone.includes('/')
-                        ? clientTimezone.split('/').pop()
-                        : clientTimezone.replace('_', ' ')}
-                    </span>
+              <div className="flex items-center justify-between">
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center mb-0.5 xs:mb-1">
+                    <div className="w-5 h-5 xs:w-6 xs:h-6 sm:w-8 sm:h-8 rounded-full overflow-hidden border-2 border-white shadow-md mr-1 xs:mr-2 flex-shrink-0 hidden lg:block">
+                      <img
+                        src={consultant.image || '/images/default-avatar.png'}
+                        alt={consultant.name}
+                        className="w-full h-full object-cover"
+                      />
+                    </div>
+                    <div className="flex flex-col sm:flex-row sm:items-center overflow-hidden">
+                      <div className="flex flex-col leading-none">
+                        <span className="font-mono font-bold text-[8px] xs:text-[9px] sm:text-sm md:text-base tracking-tight whitespace-nowrap">
+                          {slot.clientStartTime ||
+                            dateUtils.convertToClientTimezone(slot.start)?.time}
+                        </span>
+                        <span className="font-mono font-bold text-[8px] xs:text-[9px] sm:text-sm md:text-base tracking-tight whitespace-nowrap">
+                          {slot.clientEndTime ||
+                            dateUtils.convertToClientTimezone(slot.end)?.time}
+                        </span>
+                      </div>
+                      {(isWeekView || isDayView) && (
+                        <span className="text-[8px] xs:text-[9px] sm:text-xs md:text-sm font-semibold sm:ml-2 hidden sm:inline truncate">
+                          {consultant.name}
+                        </span>
+                      )}
+                    </div>
                   </div>
-                  {slot.consultantStartTime && slot.consultantEndTime && (
-                    <div className="text-[9px] sm:text-xs opacity-50 mt-2 border-t pt-2">
-                      <span className="text-gray-500">
-                        Consultant: {slot.consultantStartTime} -{' '}
-                        {slot.consultantEndTime} ({consultant.timezone})
+
+                  {(isWeekView || isDayView) && (
+                    <div className="flex flex-wrap items-center gap-0.5 xs:gap-1 mt-0.5 xs:mt-1">
+                      <span className="text-[7px] xs:text-[8px] sm:text-xs opacity-75 bg-blue-50 px-1 xs:px-1.5 py-0.5 rounded-full whitespace-nowrap">
+                        {duration}
+                      </span>
+                      <span className="text-[7px] xs:text-[8px] sm:text-xs opacity-75 bg-blue-50 px-1 xs:px-1.5 py-0.5 rounded-full whitespace-nowrap">
+                        {clientTimezone.includes('/')
+                          ? clientTimezone.split('/').pop()
+                          : clientTimezone.replace('_', ' ')}
                       </span>
                     </div>
                   )}
-                </>
+                </div>
+                {(isWeekView || isDayView) && (
+                  <div className="flex flex-col items-end ml-1 xs:ml-2 flex-shrink-0">
+                    <span className="text-[8px] xs:text-[9px] sm:text-xs md:text-sm font-semibold sm:hidden truncate max-w-[60px] xs:max-w-[80px]">
+                      {consultant.name}
+                    </span>
+                    {slot.consultantStartTime && slot.consultantEndTime && (
+                      <div className="text-[7px] xs:text-[8px] sm:text-xs opacity-50 mt-0.5 xs:mt-1 hidden sm:block">
+                        <span className="text-gray-500 whitespace-nowrap">
+                          {slot.consultantStartTime} - {slot.consultantEndTime}
+                        </span>
+                      </div>
+                    )}
+                  </div>
+                )}
+              </div>
+              {(isWeekView || isDayView) && (
+                <div className="mt-0.5 xs:mt-1 sm:hidden">
+                  <span className="text-[8px] xs:text-[9px] text-gray-600 truncate block">
+                    {consultant.name}
+                  </span>
+                  {slot.consultantStartTime && slot.consultantEndTime && (
+                    <div className="text-[7px] xs:text-[8px] opacity-50 mt-0.5 xs:mt-1">
+                      <span className="text-gray-500 whitespace-nowrap">
+                        {slot.consultantStartTime} - {slot.consultantEndTime}
+                      </span>
+                    </div>
+                  )}
+                </div>
               )}
             </div>
           );
@@ -142,7 +179,7 @@ export const CalendarDay = ({
       </div>
 
       {!hasSlots && day.isCurrentMonth && (isWeekView || isDayView) && (
-        <div className="text-[10px] sm:text-xs text-gray-400 mt-2 text-center">
+        <div className="text-[8px] xs:text-[9px] sm:text-xs text-gray-400 mt-1 xs:mt-2 text-center">
           No available slots
         </div>
       )}

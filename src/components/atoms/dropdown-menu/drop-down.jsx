@@ -2,7 +2,7 @@ import { useState, useRef } from 'react';
 import { ChevronDown } from 'lucide-react';
 
 //Hooks
-import { useClickOutside } from '@/hooks/useClickOutside.js';
+import { useClickOutside } from '@/hooks/custom/useClickOutside.js';
 
 const Dropdown = ({
   options = [],

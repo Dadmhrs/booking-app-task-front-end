@@ -1,9 +1,9 @@
-import ReduxProvider from '../components/providers/ReduxProvider';
-
-//Styles
-import '../styles/globals.css';
-//Organisms
+// Organisms
 import Layout from '@/components/organisms/layout/layout.jsx';
+// Providers
+import ReduxProvider from '../components/providers/ReduxProvider.jsx';
+// Styles
+import '../styles/globals.css';
 
 export const metadata = {
   title: 'Booking App',

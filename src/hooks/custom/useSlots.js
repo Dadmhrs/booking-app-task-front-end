@@ -34,7 +34,6 @@ export const useSlots = (consultantId, consultants) => {
           console.warn('Invalid meeting time:', meeting);
           return;
         }
-
         const startComparison = dateUtils.formatTimeComparison(
           meeting.start,
           consultant.timeZone,

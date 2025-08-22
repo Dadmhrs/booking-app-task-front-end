@@ -1,7 +1,7 @@
 'use client';
 import React, { useState, useEffect } from 'react';
 //Hooks
-import useWindowSize from '@/hooks/useWindowsSize.js';
+import useWindowSize from '@/hooks/custom/useWindowsSize';
 
 const Header = () => {
   const { width } = useWindowSize();

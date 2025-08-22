@@ -1,139 +1,302 @@
-import React from 'react';
-import { Calendar, Clock, MapPin, Globe } from 'lucide-react';
+import React, { useState, useEffect } from 'react';
+import {
+  convertToUserTimezone,
+  validateMeetingDuration,
+  formatDuration,
+  getTimezoneAbbreviation,
+} from '@/utils/timeUtils';
+import ConfirmationOverlay from '@/components/molecules/home/appointment/confirmation-overlay/overlay';
 
 export const BookingConfirmation = ({
   selectedSlot,
   selectedConsultant,
   onConfirm,
   onCancel,
+  isBooking,
 }) => {
-  if (!selectedSlot || !selectedConsultant) return null;
+  const [clientName, setClientName] = useState('');
+  const [timeDisplays, setTimeDisplays] = useState(null);
+  const [durationInfo, setDurationInfo] = useState(null);
+  const [isProcessing, setIsProcessing] = useState(false);
 
-  const isDifferentTimezone =
-    selectedSlot.clientTimezone !== selectedSlot.consultantTimezone;
+  const convertToTimezone = (utcTimeString, targetTimezone) => {
+    try {
+      const utcDate = new Date(utcTimeString);
 
-  const bookingDate = new Date(selectedSlot.start).toLocaleDateString('en-US', {
-    weekday: 'long',
-    month: 'long',
-    day: 'numeric',
-    year: 'numeric',
-  });
+      if (isNaN(utcDate.getTime())) {
+        console.error('Invalid date string:', utcTimeString);
+        return null;
+      }
+
+      return {
+        timeOnly: utcDate.toLocaleTimeString('en-GB', {
+          timeZone: targetTimezone,
+          hour12: false,
+          hour: '2-digit',
+          minute: '2-digit',
+        }),
+        dateOnly: utcDate.toLocaleDateString('en-US', {
+          timeZone: targetTimezone,
+          year: 'numeric',
+          month: '2-digit',
+          day: '2-digit',
+        }),
+        timezone: targetTimezone,
+      };
+    } catch (error) {
+      console.error('Error converting timezone:', error);
+      return null;
+    }
+  };
+
+  useEffect(() => {
+    if (selectedSlot && selectedSlot.start && selectedSlot.end) {
+      const startTimeClient = convertToUserTimezone(selectedSlot.start, true);
+      const endTimeClient = convertToUserTimezone(selectedSlot.end, true);
+
+      const consultantTimezone = selectedConsultant?.timezone || 'UTC';
+      const startTimeConsultant = convertToTimezone(
+        selectedSlot.start,
+        consultantTimezone,
+      );
+      const endTimeConsultant = convertToTimezone(
+        selectedSlot.end,
+        consultantTimezone,
+      );
+
+      const validation = validateMeetingDuration(
+        selectedSlot.start,
+        selectedSlot.end,
+      );
+
+      setTimeDisplays({
+        start: startTimeConsultant,
+        end: endTimeConsultant,
+        startClient: startTimeClient,
+        endClient: endTimeClient,
+        timezone: consultantTimezone,
+        timezoneClient: startTimeClient?.timezone,
+      });
+
+      setDurationInfo(validation);
+    }
+  }, [selectedSlot, selectedConsultant]);
+
+  const handleConfirm = async () => {
+    if (clientName && clientName.trim()) {
+      setIsProcessing(true);
+      await onConfirm(clientName.trim());
+      setIsProcessing(false);
+    }
+  };
+
+  const handleKeyPress = (e) => {
+    if (e.key === 'Enter' && clientName && clientName.trim()) {
+      handleConfirm();
+    }
+  };
+
+  const isFormValid = clientName && clientName.trim();
+
+  if (isProcessing) {
+    return null;
+  }
+
+  if (!timeDisplays) {
+    return (
+      <ConfirmationOverlay
+        isOpen={true}
+        onClose={onCancel}
+        closeOnBackdropClick={!isBooking}
+      >
+        <div className="p-6 text-center">
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto"></div>
+          <p className="mt-2 text-gray-600 text-sm md:text-base">
+            Loading booking details...
+          </p>
+        </div>
+      </ConfirmationOverlay>
+    );
+  }
 
   return (
-    <div className="mt-4 sm:mt-6 bg-white border border-gray-200 rounded-xl p-4 sm:p-6 shadow-sm">
-      <h3 className="text-lg sm:text-xl font-semibold text-gray-900 mb-4">
-        Confirm Your Booking
-      </h3>
+    <ConfirmationOverlay
+      isOpen={true}
+      onClose={onCancel}
+      closeOnBackdropClick={!isBooking}
+    >
+      <div className="bg-gradient-to-r from-blue-600 to-blue-700 text-white p-4 md:p-6 rounded-t-xl">
+        <h2 className="text-xl md:text-2xl font-bold mb-2">
+          Confirm Your Booking
+        </h2>
+        <p className="text-blue-100 text-sm md:text-base">
+          Please review your appointment details
+        </p>
+      </div>
 
-      <div className="flex flex-col lg:flex-row gap-4 sm:gap-6">
-        <div className="flex items-start gap-4 flex-1">
-          <img
-            src={selectedConsultant.image}
-            alt={selectedConsultant.name}
-            className="w-12 h-12 sm:w-16 sm:h-16 rounded-full object-cover border-2 border-gray-100"
-          />
-          <div className="flex-1 min-w-0">
-            <h4 className="font-semibold text-gray-900 text-sm sm:text-base">
-              {selectedConsultant.name}
-            </h4>
-            <p className="text-xs sm:text-sm text-gray-600 mb-2 line-clamp-2">
-              {selectedConsultant.description}
-            </p>
+      <div className="p-4 md:p-6 space-y-4 md:space-y-6">
+        <div className="p-4 md:p-6 space-y-4 md:space-y-6">
+          <div className="flex flex-col sm:flex-row items-center gap-3 p-3 md:p-4 bg-gray-50 rounded-lg">
+            <div className="w-20 h-20 md:w-24 md:h-24 lg:w-28 lg:h-28 rounded-full overflow-hidden border-2 border-blue-200 flex-shrink-0">
+              <img
+                src={selectedConsultant?.image}
+                alt={selectedConsultant?.name}
+                className="w-full h-full object-cover"
+              />
+            </div>
+
+            <div className="text-center sm:text-left">
+              <h3 className="font-semibold text-gray-900 text-sm md:text-base lg:text-lg">
+                {selectedConsultant?.name}
+              </h3>
+              <p className="text-xs md:text-sm lg:text-base text-gray-600">
+                {selectedConsultant?.description?.slice(0, 80)}
+                {selectedConsultant?.description?.length > 80 ? '...' : ''}
+              </p>
+            </div>
           </div>
         </div>
 
-        <div className="bg-gray-50 rounded-lg p-3 sm:p-4 flex-1">
-          <div className="space-y-3">
-            <div className="flex items-center gap-2 text-gray-700 text-sm">
-              <Calendar className="w-4 h-4 text-blue-600" />
-              <span className="font-medium">{bookingDate}</span>
-            </div>
-            <div className="flex items-start gap-2 text-gray-700 text-sm">
-              <Clock className="w-4 h-4 text-blue-600 mt-0.5" />
-              <div className="flex-1">
-                <div className="flex items-center gap-2">
-                  <span className="font-bold text-gray-900">
-                    {selectedSlot.clientStartTime} -{' '}
-                    {selectedSlot.clientEndTime}
-                  </span>
-                  <span className="text-xs bg-blue-100 text-blue-800 px-2 py-0.5 rounded">
-                    Your Time
-                  </span>
-                </div>
-                <div className="text-xs text-gray-500 mt-0.5">
-                  {selectedSlot.clientTimezone}
-                </div>
-                {isDifferentTimezone && (
-                  <div className="mt-2 p-2 bg-white border border-gray-200 rounded text-xs">
-                    <div className="flex items-center gap-1 text-gray-600 mb-1">
-                      <Globe className="w-3 h-3" />
-                      <span className="font-medium">Consultant's Time:</span>
-                    </div>
-                    <div className="font-medium text-gray-800">
-                      {selectedSlot.consultantStartTime} -{' '}
-                      {selectedSlot.consultantEndTime}
-                    </div>
-                    <div className="text-gray-500 mt-0.5">
-                      {selectedSlot.consultantTimezone}
-                    </div>
-                  </div>
-                )}
-              </div>
-            </div>
-            <div className="flex items-center gap-2 text-gray-700 text-sm">
-              <MapPin className="w-4 h-4 text-blue-600" />
-              <span className="font-medium">Online Meeting</span>
-            </div>
-            <div className="flex items-center gap-2 text-gray-700 text-sm">
-              <Clock className="w-4 h-4 text-gray-400" />
-              <span>
-                Duration:{' '}
-                <span className="font-medium">{selectedSlot.duration}</span>
+        <div className="space-y-3 md:space-y-4">
+          <h4 className="font-semibold text-gray-900 border-b pb-2 text-sm md:text-base">
+            Appointment Details
+          </h4>
+
+          <div className="bg-blue-50 rounded-lg p-3 md:p-4 space-y-2 md:space-y-3">
+            <div className="flex flex-col xs:flex-row xs:items-center xs:justify-between">
+              <span className="text-gray-600 font-medium text-xs md:text-sm">
+                📅 Date:
               </span>
+              <p className="text-gray-900 font-semibold text-xs md:text-sm">
+                {timeDisplays.startClient?.dateOnly}
+              </p>
             </div>
-            <div className="pt-2 border-t border-gray-200">
-              <div className="flex justify-between items-center">
-                <span className="font-medium text-gray-700 text-sm">
-                  Session Fee:
-                </span>
-                <span className="text-lg sm:text-xl font-bold text-gray-900">
-                  ${selectedSlot.price}
-                </span>
-              </div>
+
+            <div className="flex flex-col xs:flex-row xs:items-center xs:justify-between">
+              <span className="text-gray-600 font-medium text-xs md:text-sm">
+                ⏰ Time (Your Timezone):
+              </span>
+              <p className="text-gray-900 font-semibold text-xs md:text-sm">
+                {timeDisplays.startClient?.timeOnly} -{' '}
+                {timeDisplays.endClient?.timeOnly}
+              </p>
             </div>
-            {isDifferentTimezone && (
-              <div className="p-3 bg-amber-50 border border-amber-200 rounded-lg">
-                <div className="flex items-start gap-2">
-                  <Globe className="w-4 h-4 text-amber-600 mt-0.5 flex-shrink-0" />
-                  <div className="text-xs text-amber-800">
-                    <div className="font-medium mb-1">Time Zone Reminder</div>
-                    <div>
-                      Please note the time difference between your timezone and
-                      the consultant's timezone. Make sure you join the meeting
-                      at your local time shown above.
-                    </div>
-                  </div>
-                </div>
-              </div>
-            )}
+
+            <div className="flex flex-col xs:flex-row xs:items-center xs:justify-between">
+              <span className="text-gray-600 font-medium text-xs md:text-sm">
+                ⏰ Time (Consultant's Timezone):
+              </span>
+              <p className="text-gray-900 font-semibold text-xs md:text-sm">
+                {timeDisplays.start?.timeOnly} - {timeDisplays.end?.timeOnly}
+              </p>
+            </div>
+
+            <div className="flex flex-col xs:flex-row xs:items-center xs:justify-between">
+              <span className="text-gray-600 font-medium text-xs md:text-sm">
+                🌍 Your Timezone:
+              </span>
+              <p className="text-gray-900 font-semibold text-xs md:text-sm">
+                {getTimezoneAbbreviation(timeDisplays.timezoneClient)}
+              </p>
+            </div>
+
+            <div className="flex flex-col xs:flex-row xs:items-center xs:justify-between">
+              <span className="text-gray-600 font-medium text-xs md:text-sm">
+                🌍 Consultant's Timezone:
+              </span>
+              <p className="text-gray-900 font-semibold text-xs md:text-sm">
+                {getTimezoneAbbreviation(timeDisplays.timezone)}
+              </p>
+            </div>
+
+            <div className="flex flex-col xs:flex-row xs:items-center xs:justify-between">
+              <span className="text-gray-600 font-medium text-xs md:text-sm">
+                ⏱️ Duration:
+              </span>
+              <p
+                className={`font-semibold text-xs md:text-sm ${
+                  durationInfo?.isValid ? 'text-green-600' : 'text-red-600'
+                }`}
+              >
+                {durationInfo?.formattedDuration ||
+                  formatDuration(durationInfo?.duration || 0)}
+              </p>
+            </div>
+
+            <div className="flex flex-col xs:flex-row xs:items-center xs:justify-between">
+              <span className="text-gray-600 font-medium text-xs md:text-sm">
+                💰 Price:
+              </span>
+              <p className="text-green-600 font-semibold text-xs md:text-sm">
+                ${selectedSlot?.price || 150}
+              </p>
+            </div>
           </div>
-          <div className="flex flex-col sm:flex-row gap-2 sm:gap-3 mt-4">
-            <button
-              onClick={onConfirm}
-              className="flex-1 bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors font-medium text-sm sm:text-base"
-            >
-              Confirm Booking
-            </button>
-            <button
-              onClick={onCancel}
-              className="px-4 py-2 text-gray-600 hover:text-gray-800 transition-colors font-medium text-sm sm:text-base border border-gray-300 rounded-lg hover:bg-gray-50"
-            >
-              Cancel
-            </button>
-          </div>
+        </div>
+
+        <div className="space-y-2 md:space-y-3">
+          <label
+            htmlFor="clientName"
+            className="block text-xs md:text-sm font-medium text-gray-700"
+          >
+            Your Full Name *
+          </label>
+          <input
+            id="clientName"
+            type="text"
+            value={clientName}
+            onChange={(e) => setClientName(e.target.value)}
+            onKeyPress={handleKeyPress}
+            placeholder="Enter your full name"
+            className="w-full px-3 py-2 md:px-4 md:py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-colors text-xs md:text-sm"
+            disabled={isBooking}
+          />
+          {!isFormValid && clientName !== '' && (
+            <p className="text-red-500 text-xs">Please enter your name</p>
+          )}
+        </div>
+
+        <div className="text-xs text-gray-600 bg-gray-50 p-3 rounded-lg">
+          <p className="mb-2">
+            <strong>Booking Terms:</strong>
+          </p>
+          <ul className="list-disc list-inside space-y-1">
+            <li>Cancellations must be made at least 24 hours in advance</li>
+            <li>Meeting duration must be between 30 minutes and 2 hours</li>
+            <li>All times are displayed in your local timezone</li>
+            <li>You'll receive a confirmation with meeting details</li>
+          </ul>
         </div>
       </div>
-    </div>
+
+      <div className="p-4 md:p-6 bg-gray-50 rounded-b-xl flex flex-col xs:flex-row gap-2 md:gap-3">
+        <button
+          onClick={handleConfirm}
+          disabled={!isFormValid || isBooking}
+          className={`flex-1 px-3 py-2 md:px-4 md:py-2 rounded-lg font-medium text-xs md:text-sm transition-colors flex items-center justify-center gap-2 ${
+            isFormValid && !isBooking
+              ? 'bg-blue-600 text-white hover:bg-blue-700'
+              : 'bg-gray-300 text-gray-500 cursor-not-allowed'
+          }`}
+        >
+          {isBooking ? (
+            <>
+              <div className="animate-spin rounded-full h-3 w-3 md:h-4 md:w-4 border-b-2 border-white"></div>
+              Processing...
+            </>
+          ) : (
+            'Confirm Booking'
+          )}
+        </button>
+        <button
+          onClick={onCancel}
+          disabled={isBooking}
+          className="flex-1 px-3 py-2 md:px-4 md:py-2 border border-gray-300 text-gray-700 rounded-lg font-medium hover:bg-gray-100 transition-colors disabled:opacity-50 text-xs md:text-sm"
+        >
+          Cancel
+        </button>
+      </div>
+    </ConfirmationOverlay>
   );
 };
 

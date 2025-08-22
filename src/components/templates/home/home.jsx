@@ -1,12 +1,14 @@
 'use client';
 
 import { useEffect, useRef, useState } from 'react';
+//Atoms
+import ResetButton from '@/components/atoms/button/reset-button';
 // Molecules
 import ConsultantCard from '@/components/molecules/home/consultars/consultars.jsx';
 // Organisms
 import HomePageFilter from '@/components/organisms/home/filter/filter.jsx';
 // Hooks
-import Consultants from '@/mocks/consultants.js';
+import consultantsData from '@/data/models/consultars.json';
 
 const Home = () => {
   const [visibleCards, setVisibleCards] = useState(new Set());
@@ -15,7 +17,10 @@ const Home = () => {
   const [selectedTimeZone, setSelectedTimeZone] = useState('');
   const cardRefs = useRef([]);
 
-  const filteredConsultants = Consultants.filter((consultant) => {
+  // درست کردن این خط - احتمالاً consultantsData یک آبجکت است که دارای propertyی consultants است
+  const consultants = consultantsData.consultants || [];
+
+  const filteredConsultants = consultants.filter((consultant) => {
     let dayMatch = true;
     if (selectedDay) {
       dayMatch =
@@ -98,6 +103,10 @@ const Home = () => {
             onDayChange={handleDayFilterChange}
             onTimeZoneChange={handleTimeZoneFilterChange}
           />
+
+          <div className="mt-6 flex justify-center lg:justify-start">
+            <ResetButton />
+          </div>
         </div>
 
         <div className="w-full lg:w-3/4">

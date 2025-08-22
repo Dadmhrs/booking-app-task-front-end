@@ -1,8 +1,8 @@
 import { useState, useCallback, useMemo } from 'react';
 // Types
-import { ViewType } from '../types/calendar';
+import { ViewType } from '@/types/calendar.js';
 // Utils
-import { dateUtils } from '../utils/dateUtils';
+import { dateUtils } from '@/utils/dateUtils.js';
 
 export const useCalendar = (initialView = ViewType.MONTH) => {
   const [currentDate, setCurrentDate] = useState(new Date());

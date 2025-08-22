@@ -1,8 +1,5 @@
 import React from 'react';
-// Types
-import { ViewType } from '@/types/calendar.js';
-// Utils
-import { dateUtils } from '@/utils/dateUtils.js';
+import useCalendarDay from '@/hooks/logics/calendar/useCalendarDay.js';
 
 export const CalendarDay = ({
   day,
@@ -11,17 +8,74 @@ export const CalendarDay = ({
   onSlotSelect,
   selectedSlotId,
 }) => {
-  const isWeekView = view === ViewType.WEEK;
-  const isDayView = view === ViewType.DAY;
-
-  const dayDateString = dateUtils.formatToYYYYMMDD(day.date);
-
-  const daySlots = slots.filter((slotData) => {
-    const slot = slotData.slot;
-    return dateUtils.isSameDate(slot.date, dayDateString);
+  const {
+    isMounted,
+    isWeekView,
+    isDayView,
+    isDayOrWeek,
+    hasSlots,
+    noSlotAvailable,
+    processedSlots,
+    statusReserved,
+    reservedAndClientName,
+  } = useCalendarDay({
+    day,
+    view,
+    slots,
+    selectedSlotId,
   });
 
-  const hasSlots = daySlots.length > 0;
+  if (!isMounted) {
+    return (
+      <div
+        className={`
+          border-r border-b border-gray-200 last:border-r-0
+          ${
+            !day.isCurrentMonth
+              ? 'bg-gray-50'
+              : hasSlots
+              ? 'bg-white'
+              : 'bg-gray-100'
+          }
+          ${day.isToday ? (hasSlots ? 'bg-blue-100' : 'bg-blue-50') : ''}
+          ${
+            isDayView
+              ? 'min-h-[600px]'
+              : isWeekView
+              ? 'min-h-[300px]'
+              : 'min-h-[120px]'
+          }
+          p-0.5 xs:p-1 sm:p-2
+        `}
+      >
+        <div className="flex items-center justify-between mb-0.5 xs:mb-1 sm:mb-2">
+          <span
+            className={`
+              text-[9px] xs:text-[10px] sm:text-xs md:text-sm font-medium
+              ${
+                !day.isCurrentMonth
+                  ? 'text-gray-400'
+                  : hasSlots
+                  ? 'text-gray-700'
+                  : 'text-gray-500'
+              }
+              ${day.isToday ? 'text-blue-600 font-semibold' : ''}
+            `}
+          >
+            {day.date.getDate()}
+          </span>
+          {hasSlots && (
+            <span className="w-1.5 h-1.5 xs:w-2 xs:h-2 bg-green-400 rounded-full"></span>
+          )}
+        </div>
+        <div className="px-1 xs:px-2 space-y-1 xs:space-y-2">
+          {hasSlots && (
+            <div className="bg-gray-200 animate-pulse rounded-md h-12"></div>
+          )}
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div
@@ -66,120 +120,134 @@ export const CalendarDay = ({
         )}
       </div>
 
-      <div className="space-y-1 xs:space-y-2">
-        {daySlots.map((slotData, index) => {
-          const slot = slotData.slot;
-          const consultant = slotData.consultant;
-          const isSelected = selectedSlotId === slot.id;
-
-          const displayTime =
-            slot.clientStartTime && slot.clientEndTime
-              ? `${slot.clientStartTime} - ${slot.clientEndTime}`
-              : `${dateUtils.convertToClientTimezone(slot.start)?.time} - ${
-                  dateUtils.convertToClientTimezone(slot.end)?.time
-                }`;
-
-          const clientTimezone =
-            slot.clientTimezone ||
-            Intl.DateTimeFormat().resolvedOptions().timeZone;
-
-          const duration = dateUtils.calculateDuration(slot.start, slot.end);
-
-          return (
-            <div
-              key={`${slot.id}-${index}`}
-              onClick={() => onSlotSelect(slot, consultant)}
-              className={`
-                cursor-pointer rounded-md xs:rounded-lg px-1 xs:px-1.5 sm:px-2 
-                py-1 xs:py-1.5 sm:py-2 w-full
-                transition-all duration-200
-                ${
-                  slot.status === 'available'
-                    ? isSelected
-                      ? 'bg-blue-600 text-white shadow-md'
-                      : 'bg-green-100 text-green-800 hover:bg-green-200'
-                    : 'bg-gray-100 text-gray-500 cursor-not-allowed'
-                }
-              `}
-            >
-              <div className="flex items-center justify-between">
-                <div className="flex-1 min-w-0">
-                  <div className="flex items-center mb-0.5 xs:mb-1">
-                    <div className="w-5 h-5 xs:w-6 xs:h-6 sm:w-8 sm:h-8 rounded-full overflow-hidden border-2 border-white shadow-md mr-1 xs:mr-2 flex-shrink-0 hidden lg:block">
-                      <img
-                        src={consultant.image || '/images/default-avatar.png'}
-                        alt={consultant.name}
-                        className="w-full h-full object-cover"
-                      />
-                    </div>
-                    <div className="flex flex-col sm:flex-row sm:items-center overflow-hidden">
-                      <div className="flex flex-col leading-none">
-                        <span className="font-mono font-bold text-[8px] xs:text-[9px] sm:text-sm md:text-base tracking-tight whitespace-nowrap">
-                          {slot.clientStartTime ||
-                            dateUtils.convertToClientTimezone(slot.start)?.time}
-                        </span>
-                        <span className="font-mono font-bold text-[8px] xs:text-[9px] sm:text-sm md:text-base tracking-tight whitespace-nowrap">
-                          {slot.clientEndTime ||
-                            dateUtils.convertToClientTimezone(slot.end)?.time}
-                        </span>
-                      </div>
-                      {(isWeekView || isDayView) && (
-                        <span className="text-[8px] xs:text-[9px] sm:text-xs md:text-sm font-semibold sm:ml-2 hidden sm:inline truncate">
-                          {consultant.name}
-                        </span>
-                      )}
-                    </div>
-                  </div>
-
-                  {(isWeekView || isDayView) && (
-                    <div className="flex flex-wrap items-center gap-0.5 xs:gap-1 mt-0.5 xs:mt-1">
-                      <span className="text-[7px] xs:text-[8px] sm:text-xs opacity-75 bg-blue-50 px-1 xs:px-1.5 py-0.5 rounded-full whitespace-nowrap">
-                        {duration}
-                      </span>
-                      <span className="text-[7px] xs:text-[8px] sm:text-xs opacity-75 bg-blue-50 px-1 xs:px-1.5 py-0.5 rounded-full whitespace-nowrap">
-                        {clientTimezone.includes('/')
-                          ? clientTimezone.split('/').pop()
-                          : clientTimezone.replace('_', ' ')}
-                      </span>
-                    </div>
-                  )}
+      <div className="px-1 xs:px-2 space-y-2 xs:space-y-3">
+        {processedSlots.map((slotData, index) => (
+          <div
+            key={`${slotData.slot.id}-${index}`}
+            onClick={() =>
+              slotData.finalStatus === 'available' &&
+              onSlotSelect(slotData.slot, slotData.consultant)
+            }
+            className={`${slotData.getSlotClassName()} ${
+              slotData.finalStatus === 'reserved'
+                ? 'cursor-not-allowed'
+                : slotData.finalStatus === 'available'
+                ? 'cursor-pointer'
+                : 'cursor-default'
+            }`}
+          >
+            {/* Time Display - همیشه در یک خط */}
+            <div className="flex items-center justify-between mb-1 xs:mb-1.5">
+              <div className="flex items-center gap-1 xs:gap-2 flex-1 min-w-0">
+                {/* Avatar - فقط در حالت دسکتاپ */}
+                <div className="w-4 h-4 xs:w-5 xs:h-5 sm:w-6 sm:h-6 rounded-full overflow-hidden border border-white shadow-sm flex-shrink-0 hidden lg:block">
+                  <img
+                    src={
+                      slotData.consultant.image || '/images/default-avatar.png'
+                    }
+                    alt={slotData.consultant.name}
+                    className="w-full h-full object-cover"
+                  />
                 </div>
-                {(isWeekView || isDayView) && (
-                  <div className="flex flex-col items-end ml-1 xs:ml-2 flex-shrink-0">
-                    <span className="text-[8px] xs:text-[9px] sm:text-xs md:text-sm font-semibold sm:hidden truncate max-w-[60px] xs:max-w-[80px]">
-                      {consultant.name}
-                    </span>
-                    {slot.consultantStartTime && slot.consultantEndTime && (
-                      <div className="text-[7px] xs:text-[8px] sm:text-xs opacity-50 mt-0.5 xs:mt-1 hidden sm:block">
-                        <span className="text-gray-500 whitespace-nowrap">
-                          {slot.consultantStartTime} - {slot.consultantEndTime}
-                        </span>
-                      </div>
-                    )}
-                  </div>
+
+                {/* Time Range - در یک خط قابل انعطاف */}
+                <div className="flex items-center gap-0.5 xs:gap-1 flex-wrap min-w-0">
+                  <span className="font-mono font-semibold text-[8px] xs:text-[9px] sm:text-xs md:text-sm tracking-tight whitespace-nowrap">
+                    {slotData.startingTime}
+                  </span>
+                  <span className="text-[7px] xs:text-[8px] sm:text-[10px] opacity-70">
+                    -
+                  </span>
+                  <span className="font-mono font-semibold text-[8px] xs:text-[9px] sm:text-xs md:text-sm tracking-tight whitespace-nowrap">
+                    {slotData.endingTime}
+                  </span>
+                </div>
+
+                {/* Consultant Name - فقط در حالت week/day و در سایز بزرگتر */}
+                {isDayOrWeek && (
+                  <span className="text-[8px] xs:text-[9px] sm:text-xs font-medium hidden sm:inline truncate max-w-[80px] lg:max-w-[120px]">
+                    {slotData.consultant.name}
+                  </span>
                 )}
               </div>
-              {(isWeekView || isDayView) && (
-                <div className="mt-0.5 xs:mt-1 sm:hidden">
-                  <span className="text-[8px] xs:text-[9px] text-gray-600 truncate block">
-                    {consultant.name}
-                  </span>
-                  {slot.consultantStartTime && slot.consultantEndTime && (
-                    <div className="text-[7px] xs:text-[8px] opacity-50 mt-0.5 xs:mt-1">
-                      <span className="text-gray-500 whitespace-nowrap">
-                        {slot.consultantStartTime} - {slot.consultantEndTime}
-                      </span>
-                    </div>
-                  )}
+
+              {/* Status Indicator */}
+              {statusReserved(slotData) && (
+                <div
+                  className={`text-[6px] xs:text-[7px] sm:text-[8px] text-red-600 font-bold px-1 xs:px-1.5 py-0.5 rounded-full flex-shrink-0 ${
+                    slotData.isRealTimeBooked
+                      ? 'bg-red-200 animate-pulse ring-1 ring-red-400'
+                      : 'bg-red-100'
+                  }`}
+                >
+                  {slotData.isRealTimeBooked ? '🔴' : 'R'}
                 </div>
               )}
             </div>
-          );
-        })}
+
+            {/* Additional Info - فقط برای week/day view */}
+            {isDayOrWeek && (
+              <>
+                {/* Consultant Name for Mobile */}
+                <div className="sm:hidden mb-1">
+                  <span className="text-[8px] xs:text-[9px] text-gray-600 font-medium truncate block">
+                    {slotData.consultant.name}
+                  </span>
+                </div>
+
+                {/* Meta Information */}
+                <div className="flex flex-wrap items-center gap-0.5 xs:gap-1 text-[6px] xs:text-[7px] sm:text-[8px]">
+                  {/* Duration */}
+                  <span
+                    className={`opacity-75 px-1 xs:px-1.5 py-0.5 rounded-full whitespace-nowrap ${
+                      slotData.finalStatus === 'reserved'
+                        ? 'bg-red-50 text-red-700'
+                        : 'bg-blue-50 text-blue-700'
+                    }`}
+                  >
+                    {slotData.duration}
+                  </span>
+
+                  {/* Timezone */}
+                  <span
+                    className={`opacity-75 px-1 xs:px-1.5 py-0.5 rounded-full whitespace-nowrap ${
+                      slotData.finalStatus === 'reserved'
+                        ? 'bg-red-50 text-red-700'
+                        : 'bg-blue-50 text-blue-700'
+                    }`}
+                  >
+                    {slotData.clientTimezone.includes('/')
+                      ? slotData.clientTimezone.split('/').pop()
+                      : slotData.clientTimezone.replace('_', ' ')}
+                  </span>
+
+                  {/* Client Name for Reserved */}
+                  {reservedAndClientName(slotData) && (
+                    <span className="opacity-90 bg-red-200 text-red-900 px-1 xs:px-1.5 py-0.5 rounded-full whitespace-nowrap font-semibold">
+                      {slotData.isRealTimeBooked ? '🔴' : ''}{' '}
+                      {slotData.finalClientName}
+                    </span>
+                  )}
+                </div>
+
+                {/* Consultant Time - فقط برای سایزهای بزرگتر */}
+                {slotData.slot.consultantStartTime &&
+                  slotData.slot.consultantEndTime && (
+                    <div className="text-[6px] xs:text-[7px] sm:text-[8px] opacity-50 mt-1 hidden sm:block">
+                      <span className="text-gray-500 whitespace-nowrap">
+                        Consultant: {slotData.slot.consultantStartTime} -{' '}
+                        {slotData.slot.consultantEndTime}
+                      </span>
+                    </div>
+                  )}
+              </>
+            )}
+          </div>
+        ))}
       </div>
 
-      {!hasSlots && day.isCurrentMonth && (isWeekView || isDayView) && (
-        <div className="text-[8px] xs:text-[9px] sm:text-xs text-gray-400 mt-1 xs:mt-2 text-center">
+      {noSlotAvailable && (
+        <div className="text-[8px] xs:text-[9px] sm:text-xs text-gray-400 mt-1 xs:mt-2 text-center px-1 xs:px-2">
           No available slots
         </div>
       )}

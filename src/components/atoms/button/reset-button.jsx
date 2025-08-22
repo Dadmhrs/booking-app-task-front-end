@@ -12,30 +12,25 @@ const ResetButton = () => {
     setShowConfirm(false);
 
     try {
-      // پاک کردن دیتا
       localStorage.clear();
       sessionStorage.clear();
 
-      // پیام موفقیت
       setPopup({
         visible: true,
         type: 'success',
-        message: '✅ دیتا با موفقیت ریست شد!',
+        message: '✅ Data reset successfuly',
       });
 
-      // بعد 1.5 ثانیه رفرش بشه
       setTimeout(() => {
         window.location.reload();
       }, 1500);
     } catch (error) {
-      // پیام خطا
       setPopup({
         visible: true,
         type: 'failed',
-        message: '❌ ریست ناموفق بود!',
+        message: '❌ Data reset failed  ',
       });
 
-      // بعد 2 ثانیه بسته بشه
       setTimeout(() => setPopup({ visible: false }), 2000);
     }
   };
@@ -53,9 +48,8 @@ const ResetButton = () => {
         Reset All Data
       </button>
 
-      {/* Custom Confirmation Modal */}
       {showConfirm && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+        <div className="fixed inset-0 flex items-center justify-center z-50">
           <div className="bg-white rounded-xl shadow-2xl max-w-md w-full mx-4">
             <div className="p-6">
               <div className="flex items-center justify-center mb-4">
@@ -104,9 +98,8 @@ const ResetButton = () => {
         </div>
       )}
 
-      {/* Success/Error Popup */}
       {popup.visible && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+        <div className="fixed inset-0 flex items-center justify-center z-50">
           <div className="bg-white rounded-xl shadow-2xl max-w-sm w-full mx-4">
             <div className="p-6 text-center">
               <div className="mb-4">

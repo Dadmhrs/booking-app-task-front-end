@@ -1,11 +1,13 @@
 import React, { useState, useEffect } from 'react';
+// Atoms
+import ConfirmationOverlay from '@/components/molecules/home/appointment/confirmation-overlay/overlay.jsx';
+// Utils
 import {
   convertToUserTimezone,
   validateMeetingDuration,
   formatDuration,
   getTimezoneAbbreviation,
-} from '@/utils/timeUtils';
-import ConfirmationOverlay from '@/components/molecules/home/appointment/confirmation-overlay/overlay';
+} from '@/utils/timeUtils.js';
 
 export const BookingConfirmation = ({
   selectedSlot,

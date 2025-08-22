@@ -1,3 +1,5 @@
+// Enhanced CalendarLayout.jsx - Fixed error handling to always show BookingModal
+
 import React, { useEffect, useState } from 'react';
 // Atoms
 import BookingModal from '@/components/atoms/modals/booking-modal.jsx';
@@ -36,7 +38,7 @@ export const CalendarLayout = ({
     meetingString: '',
   });
 
-  const [showConfirmation, setShowConfirmation] = useState(true);
+  const [showConfirmation, setShowConfirmation] = useState(false);
 
   const { consultants: reduxConsultants } = useAppSelector(
     (state) => state.consultants,
@@ -44,7 +46,9 @@ export const CalendarLayout = ({
 
   const { clients } = useAppSelector((state) => state.clients);
 
-  const { isHydrated } = useAppSelector((state) => state.booking);
+  const { isHydrated, bookedMeetings } = useAppSelector(
+    (state) => state.booking,
+  );
 
   useEffect(() => {
     if (!isHydrated) {
@@ -99,89 +103,93 @@ export const CalendarLayout = ({
       setShowConfirmation(true);
     } else {
       dispatch(clearSelection());
-      setShowConfirmation(true);
+      setShowConfirmation(false);
     }
   };
 
   const handleBooking = async (clientName) => {
     if (selectedSlot && selectedConsultant && clientName) {
+      // Hide confirmation immediately when booking starts
+      setShowConfirmation(false);
+
       try {
         const result = await dispatch(
           bookMeeting({
             consultantId: selectedConsultant.id,
             meetingId: selectedSlot.id,
-            clientName,
+            clientName: clientName.trim(),
           }),
         ).unwrap();
 
         console.log('Booking successful:', result);
-      } catch (error) {}
+      } catch (error) {
+        console.log('Booking error caught:', error);
+      }
     }
   };
 
+  // Handle successful booking - show success modal
   useEffect(() => {
     if (bookingSuccess) {
+      const { bookingDetails } = bookingSuccess;
+
       setBookingModal({
         visible: true,
         type: 'success',
         message:
-          'Your meeting has been successfully booked! You will receive a confirmation shortly.',
-        bookingDetails: bookingSuccess.bookingDetails || null,
+          'Your meeting has been successfully booked! You will receive a confirmation email shortly.',
+        bookingDetails: bookingDetails,
         meetingString: bookingSuccess.meetingString || '',
       });
+
+      setShowConfirmation(false); // Ensure confirmation is hidden
+
       setTimeout(() => {
         dispatch(clearBookingStatus());
       }, 100);
     }
   }, [bookingSuccess, dispatch]);
 
+  // Handle booking errors - show error modal
   useEffect(() => {
     if (bookingError) {
-      let errorMessage = '';
-      let errorTitle = '';
+      let errorTitle = 'Booking Failed';
+      let errorMessage = bookingError;
 
-      if (
-        bookingError.includes('Time Conflict') ||
-        bookingError.includes('Time conflict')
-      ) {
-        errorTitle = '⚠️ Scheduling Conflict Detected!';
-        errorMessage = `${bookingError}\n\nPlease select a different time slot that doesn't overlap with your existing bookings.`;
+      // Categorize errors for better user experience
+      if (bookingError.includes('Time Conflict')) {
+        errorTitle = 'Schedule Conflict';
+        errorMessage =
+          'You already have a meeting scheduled at this time. Please select a different time slot.';
       } else if (
         bookingError.includes('not available') ||
-        bookingError.includes('no longer available') ||
-        bookingError.includes('already been booked') ||
-        bookingError.includes('already reserved')
+        bookingError.includes('no longer available')
       ) {
-        errorTitle = '❌ Slot Unavailable!';
-        errorMessage = `${bookingError}\n\nThis time slot may have been booked by you or another client. Please refresh and select a different time.`;
-      } else if (
-        bookingError.includes('duration') &&
-        (bookingError.includes('short') || bookingError.includes('long'))
-      ) {
-        if (bookingError.includes('short')) {
-          errorTitle = '⏱️ Meeting Duration Too Short!';
-          errorMessage = `${bookingError}\n\nPlease select a meeting slot that is at least 30 minutes long.`;
-        } else {
-          errorTitle = '⏱️ Meeting Duration Too Long!';
-          errorMessage = `${bookingError}\n\nPlease select a meeting slot that is no more than 2 hours long.`;
-        }
-        setShowConfirmation(false);
-      } else if (bookingError.includes('not found')) {
-        errorTitle = '❌ Booking Error!';
-        errorMessage = `${bookingError}\n\nPlease refresh the page and try again.`;
-        setShowConfirmation(false);
-      } else {
-        errorTitle = '❌ Booking Failed!';
-        errorMessage = `${bookingError}\n\nPlease try again or contact support if the problem persists.`;
+        errorTitle = 'Slot Unavailable';
+        errorMessage =
+          'This time slot is no longer available. Please refresh and select a different time.';
+      } else if (bookingError.includes('too short')) {
+        errorTitle = 'Meeting Too Short';
+        errorMessage =
+          'Please select a meeting slot that is at least 30 minutes long.';
+      } else if (bookingError.includes('too long')) {
+        errorTitle = 'Meeting Too Long';
+        errorMessage =
+          'Please select a meeting slot that is no more than 2 hours long.';
+      } else if (bookingError.includes('valid client name')) {
+        errorTitle = 'Invalid Name';
+        errorMessage = 'Please enter a valid name with at least 2 characters.';
       }
 
       setBookingModal({
         visible: true,
         type: 'failed',
-        message: `${errorTitle}\n\n${errorMessage}`,
+        message: errorMessage,
         bookingDetails: null,
         meetingString: '',
       });
+
+      setShowConfirmation(false); // Ensure confirmation is hidden for all errors
 
       setTimeout(() => {
         dispatch(clearBookingStatus());
@@ -197,10 +205,6 @@ export const CalendarLayout = ({
       bookingDetails: null,
       meetingString: '',
     });
-
-    if (bookingModal.type === 'failed' && !showConfirmation) {
-      dispatch(clearSelection());
-    }
   };
 
   const handleNavigateHome = () => {
@@ -213,6 +217,23 @@ export const CalendarLayout = ({
         window.location.href = '/';
       }
     }
+  };
+
+  // Helper function to get unique client names from bookings
+  const getUniqueClientNames = () => {
+    const clientNames = bookedMeetings.map((booking) =>
+      booking.clientName.trim(),
+    );
+    return [...new Set(clientNames)].sort();
+  };
+
+  // Helper function to get bookings count for a client
+  const getClientBookingsCount = (clientName) => {
+    return bookedMeetings.filter(
+      (booking) =>
+        booking.clientName.toLowerCase().trim() ===
+        clientName.toLowerCase().trim(),
+    ).length;
   };
 
   return (
@@ -234,19 +255,21 @@ export const CalendarLayout = ({
           selectedSlotId={selectedSlot?.id}
         />
 
-        {bookingStep === 'confirmation' && showConfirmation && (
+        {/* Only show BookingConfirmation if bookingStep is 'confirmation' AND showConfirmation is true AND not booking */}
+        {bookingStep === 'confirmation' && showConfirmation && !isBooking && (
           <BookingConfirmation
             selectedSlot={selectedSlot}
             selectedConsultant={selectedConsultant}
             onConfirm={handleBooking}
             onCancel={() => {
               dispatch(clearSelection());
-              setShowConfirmation(true);
+              setShowConfirmation(false);
             }}
             isBooking={isBooking}
           />
         )}
 
+        {/* Processing overlay */}
         {isBooking && (
           <div className="fixed bottom-[0px] left-0 w-full h-full bg-black/50 flex items-center justify-center z-[9999]">
             <div className="bg-white rounded-lg p-8 flex flex-col items-center space-y-4 max-w-sm mx-4">
@@ -256,19 +279,47 @@ export const CalendarLayout = ({
                   Processing Your Booking
                 </h3>
                 <p className="text-gray-600 text-sm">
-                  Checking for conflicts and validating your request...
+                  Please wait while we process your request...
                 </p>
               </div>
             </div>
           </div>
         )}
 
-        {clients && clients.length > 0 && (
+        {/* Enhanced booking statistics */}
+        {bookedMeetings && bookedMeetings.length > 0 && (
           <div className="mt-4 p-4 bg-blue-50 rounded-lg">
             <h4 className="text-sm font-semibold text-blue-800 mb-2">
-              📊 Booking Statistics
+              📊 Current Bookings Summary
             </h4>
             <div className="text-xs text-blue-600">
+              <p>Total bookings: {bookedMeetings.length}</p>
+              <p>Unique clients: {getUniqueClientNames().length}</p>
+              <div className="mt-2 text-gray-600">
+                <p className="font-semibold">Recent Clients:</p>
+                <div className="max-h-20 overflow-y-auto">
+                  {getUniqueClientNames()
+                    .slice(0, 5)
+                    .map((clientName, index) => (
+                      <p key={index} className="text-xs">
+                        • {clientName} ({getClientBookingsCount(clientName)}{' '}
+                        booking
+                        {getClientBookingsCount(clientName) !== 1 ? 's' : ''})
+                      </p>
+                    ))}
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Legacy clients display for backwards compatibility */}
+        {clients && clients.length > 0 && (
+          <div className="mt-4 p-4 bg-green-50 rounded-lg">
+            <h4 className="text-sm font-semibold text-green-800 mb-2">
+              📊 Legacy Client Statistics
+            </h4>
+            <div className="text-xs text-green-600">
               <p>Total registered clients: {clients.length}</p>
               <p>
                 Total booked meetings:{' '}
@@ -291,23 +342,9 @@ export const CalendarLayout = ({
             </div>
           </div>
         )}
-
-        {bookingError && bookingError.includes('Time Conflict') && (
-          <div className="mt-4 p-4 bg-yellow-50 border border-yellow-200 rounded-lg">
-            <div className="flex items-center space-x-2">
-              <span className="text-yellow-600">⚠️</span>
-              <h4 className="text-sm font-semibold text-yellow-800">
-                Time Conflict Warning
-              </h4>
-            </div>
-            <p className="text-xs text-yellow-700 mt-1">
-              Please select a different time slot that doesn't overlap with your
-              existing bookings.
-            </p>
-          </div>
-        )}
       </div>
 
+      {/* BookingModal for all success and error states */}
       <BookingModal
         visible={bookingModal.visible}
         type={bookingModal.type}

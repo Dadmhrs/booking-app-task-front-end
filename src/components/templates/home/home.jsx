@@ -1,8 +1,8 @@
 'use client';
 
 import { useEffect, useRef, useState } from 'react';
-//Atoms
-import ResetButton from '@/components/atoms/button/reset-button';
+// Atoms
+import ResetButton from '@/components/atoms/button/reset-button.jsx';
 // Molecules
 import ConsultantCard from '@/components/molecules/home/consultars/consultars.jsx';
 // Organisms
@@ -17,7 +17,6 @@ const Home = () => {
   const [selectedTimeZone, setSelectedTimeZone] = useState('');
   const cardRefs = useRef([]);
 
-  // درست کردن این خط - احتمالاً consultantsData یک آبجکت است که دارای propertyی consultants است
   const consultants = consultantsData.consultants || [];
 
   const filteredConsultants = consultants.filter((consultant) => {

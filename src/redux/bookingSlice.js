@@ -1,54 +1,80 @@
 import { createSlice, createAsyncThunk } from '@reduxjs/toolkit';
+// Utils
+import {
+  convertToUserTimezone,
+  calculateDurationMinutes,
+  validateMeetingDuration,
+  timeRangesOverlap,
+} from '@/utils/timeUtils.js';
 
-// Helper function to convert UTC time to user's local timezone
-const convertToUserTimezone = (utcTimeString) => {
-  const utcDate = new Date(utcTimeString);
-  const userTimezone = Intl.DateTimeFormat().resolvedOptions().timeZone;
+const checkClientTimeConflict = (
+  existingBookings,
+  newStart,
+  newEnd,
+  clientName,
+) => {
+  const clientBookings = existingBookings.filter(
+    (booking) =>
+      booking.clientName.toLowerCase().trim() ===
+      clientName.toLowerCase().trim(),
+  );
 
-  return {
-    date: utcDate,
-    localTime: utcDate.toLocaleString('en-US', {
-      timeZone: userTimezone,
-      hour12: false,
-      year: 'numeric',
-      month: '2-digit',
-      day: '2-digit',
-      hour: '2-digit',
-      minute: '2-digit',
-    }),
-    timezone: userTimezone,
-  };
-};
+  if (clientBookings.length === 0) {
+    return { hasConflict: false };
+  }
 
-// Helper function to calculate duration in minutes
-const calculateDurationMinutes = (start, end) => {
-  const startTime = new Date(start);
-  const endTime = new Date(end);
-  return (endTime - startTime) / (1000 * 60); // Convert to minutes
-};
+  const newStartLocal = convertToUserTimezone(newStart);
+  const newEndLocal = convertToUserTimezone(newEnd);
 
-// Helper function to validate meeting duration
-const validateMeetingDuration = (start, end) => {
-  const durationMinutes = calculateDurationMinutes(start, end);
-
-  if (durationMinutes < 30) {
+  if (!newStartLocal || !newEndLocal) {
     return {
-      isValid: false,
-      error: `Meeting duration is too short (${durationMinutes} minutes). Minimum duration is 30 minutes.`,
+      hasConflict: false,
+      error: 'Unable to convert new meeting times to local timezone',
     };
   }
 
-  if (durationMinutes > 120) {
-    return {
-      isValid: false,
-      error: `Meeting duration is too long (${durationMinutes} minutes). Maximum duration is 120 minutes (2 hours).`,
-    };
+  for (const booking of clientBookings) {
+    const existingStart = booking.meetingStart;
+    const existingEnd = booking.meetingEnd;
+
+    const existingStartLocal = convertToUserTimezone(existingStart);
+    const existingEndLocal = convertToUserTimezone(existingEnd);
+
+    if (!existingStartLocal || !existingEndLocal) {
+      console.warn('⚠️ Unable to convert existing booking times:', booking);
+      continue;
+    }
+
+    const hasOverlap = timeRangesOverlap(
+      { start: newStart, end: newEnd },
+      { start: existingStart, end: existingEnd },
+    );
+
+    if (hasOverlap) {
+      return {
+        hasConflict: true,
+        conflictDetails: {
+          clientName,
+          existingBooking: booking,
+          existingStart: existingStartLocal.timeOnly,
+          existingEnd: existingEndLocal.timeOnly,
+          existingDate: existingStartLocal.dateOnly,
+          existingConsultant:
+            booking.bookingDetails?.consultantName || 'Unknown',
+          newStart: newStartLocal.timeOnly,
+          newEnd: newEndLocal.timeOnly,
+          newDate: newStartLocal.dateOnly,
+          timezone: newStartLocal.timezone,
+          sameDateConflict:
+            existingStartLocal.dateOnly === newStartLocal.dateOnly,
+        },
+      };
+    }
   }
 
-  return { isValid: true };
+  return { hasConflict: false };
 };
 
-// Async thunk for booking a meeting
 export const bookMeeting = createAsyncThunk(
   'booking/bookMeeting',
   async (
@@ -59,13 +85,18 @@ export const bookMeeting = createAsyncThunk(
       console.log('🚀 Starting booking process:', {
         consultantId,
         meetingId,
-        clientName,
+        clientName: clientName.trim(),
       });
 
-      // Simulate API call delay
+      const trimmedClientName = clientName.trim();
+      if (!trimmedClientName || trimmedClientName.length < 2) {
+        throw new Error(
+          'Please provide a valid client name (minimum 2 characters)',
+        );
+      }
+
       await new Promise((resolve) => setTimeout(resolve, 1000));
 
-      // Get current state
       const state = getState();
       const consultant = state.consultants.consultants.find(
         (c) => c.id === consultantId,
@@ -75,15 +106,12 @@ export const bookMeeting = createAsyncThunk(
         throw new Error('Consultant not found');
       }
 
-      console.log('👨‍💼 Found consultant:', consultant.name);
-
       const meeting = consultant.meetings.find((m) => m.id === meetingId);
 
       if (!meeting) {
         throw new Error('Meeting slot not found or has been removed');
       }
 
-      // Check if meeting is already booked in Redux state
       const isAlreadyBooked = state.booking.bookedMeetings.some(
         (booking) =>
           booking.consultantId === consultantId &&
@@ -91,44 +119,33 @@ export const bookMeeting = createAsyncThunk(
       );
 
       if (isAlreadyBooked || meeting.status !== 'available') {
-        throw new Error('Meeting slot is no longer available');
+        throw new Error(
+          'Meeting slot is no longer available. Please refresh and select a different time.',
+        );
       }
 
-      // Validate meeting duration
       const durationValidation = validateMeetingDuration(
         meeting.start,
         meeting.end,
       );
+
       if (!durationValidation.isValid) {
         throw new Error(durationValidation.error);
       }
 
-      // Check for time conflicts with existing bookings
-      const existingBookings = state.booking.bookedMeetings.filter(
-        (booking) =>
-          booking.clientName.toLowerCase() === clientName.toLowerCase(),
+      const conflictCheck = checkClientTimeConflict(
+        state.booking.bookedMeetings,
+        meeting.start,
+        meeting.end,
+        trimmedClientName,
       );
 
-      const newMeetingStart = new Date(meeting.start);
-      const newMeetingEnd = new Date(meeting.end);
-
-      for (const booking of existingBookings) {
-        const existingStart = new Date(booking.meetingStart);
-        const existingEnd = new Date(booking.meetingEnd);
-
-        // Check for overlap
-        if (
-          (newMeetingStart >= existingStart && newMeetingStart < existingEnd) ||
-          (newMeetingEnd > existingStart && newMeetingEnd <= existingEnd) ||
-          (newMeetingStart <= existingStart && newMeetingEnd >= existingEnd)
-        ) {
-          throw new Error(
-            `Time Conflict: You already have a meeting scheduled from ${existingStart.toLocaleString()} to ${existingEnd.toLocaleString()}. Please select a different time slot.`,
-          );
-        }
+      if (conflictCheck.hasConflict) {
+        throw new Error(
+          'Time Conflict: You already have a meeting scheduled at this time. Please select a different time slot.',
+        );
       }
 
-      // Convert times to user's local timezone for display
       const startLocal = convertToUserTimezone(meeting.start);
       const endLocal = convertToUserTimezone(meeting.end);
       const duration = calculateDurationMinutes(meeting.start, meeting.end);
@@ -137,58 +154,45 @@ export const bookMeeting = createAsyncThunk(
         consultantName: consultant.name,
         consultantId: consultant.id,
         meetingId: meeting.id,
-        clientName,
+        clientName: trimmedClientName,
         meetingStart: meeting.start,
         meetingEnd: meeting.end,
-        meetingStartLocal: startLocal.localTime,
-        meetingEndLocal: endLocal.localTime,
+        meetingStartLocal: startLocal.timeOnly,
+        meetingEndLocal: endLocal.timeOnly,
+        meetingDateLocal: startLocal.dateOnly,
         timezone: startLocal.timezone,
         duration: `${duration} minutes`,
+        formattedDuration: durationValidation.formattedDuration,
         status: 'reserved',
         bookedAt: new Date().toISOString(),
       };
 
-      console.log('✅ Booking completed successfully:', bookingDetails);
-
       return {
         consultantId,
         meetingId,
-        clientName,
+        clientName: trimmedClientName,
         bookingDetails,
+        meetingString: `${meeting.start}_${meeting.end}_${consultantId}_${meetingId}`,
       };
     } catch (error) {
+      console.log('❌ Booking failed:', error.message);
       return rejectWithValue(error.message);
     }
   },
 );
 
-// Async thunk for canceling a meeting
-export const cancelMeeting = createAsyncThunk(
-  'booking/cancelMeeting',
-  async (
-    { consultantId, meetingId },
-    { dispatch, getState, rejectWithValue },
-  ) => {
-    try {
-      console.log('❌ Starting cancellation process:', {
-        consultantId,
-        meetingId,
-      });
+const initialState = {
+  selectedSlot: null,
+  selectedConsultant: null,
+  bookingStep: null,
+  isBooking: false,
+  bookingError: null,
+  bookingSuccess: null,
+  consultants: [],
+  bookedMeetings: [],
+  isHydrated: false,
+};
 
-      console.log('✅ Cancellation completed successfully');
-
-      return {
-        consultantId,
-        meetingId,
-        status: 'cancelled',
-      };
-    } catch (error) {
-      return rejectWithValue(error.message);
-    }
-  },
-);
-
-// Load persisted state (only on client-side)
 const loadPersistedBookings = () => {
   if (typeof window === 'undefined') return [];
 
@@ -198,27 +202,6 @@ const loadPersistedBookings = () => {
   } catch (error) {
     return [];
   }
-};
-
-const initialState = {
-  // Selection state
-  selectedSlot: null,
-  selectedConsultant: null,
-
-  // Booking flow state
-  bookingStep: null, // null, 'confirmation'
-
-  // Async state
-  isBooking: false,
-  bookingError: null,
-  bookingSuccess: null,
-
-  // Consultants state (synced from consultants slice)
-  consultants: [],
-
-  // Persistent booked meetings state
-  bookedMeetings: [], // Will be loaded from localStorage on client
-  isHydrated: false, // Track if client-side data is loaded
 };
 
 const bookingSlice = createSlice({
@@ -237,7 +220,6 @@ const bookingSlice = createSlice({
       state.selectedSlot = slot;
       state.selectedConsultant = consultant;
       state.bookingStep = 'confirmation';
-      // Clear any previous errors/success
       state.bookingError = null;
       state.bookingSuccess = null;
     },
@@ -266,7 +248,6 @@ const bookingSlice = createSlice({
       state.consultants = action.payload;
     },
 
-    // Load persisted bookings (called after hydration)
     hydrateBookings: (state) => {
       if (typeof window !== 'undefined' && !state.isHydrated) {
         state.bookedMeetings = loadPersistedBookings();
@@ -275,7 +256,6 @@ const bookingSlice = createSlice({
       }
     },
 
-    // Reset all bookings (for Reset button)
     resetAllBookings: (state) => {
       console.log('🔄 Resetting all bookings...');
       state.bookedMeetings = [];
@@ -285,30 +265,14 @@ const bookingSlice = createSlice({
       state.bookingError = null;
       state.bookingSuccess = null;
 
-      // Clear localStorage
       if (typeof window !== 'undefined') {
         localStorage.removeItem('bookedMeetings');
-      }
-    },
-
-    // Helper to persist bookings to localStorage
-    persistBookings: (state) => {
-      if (typeof window !== 'undefined') {
-        try {
-          localStorage.setItem(
-            'bookedMeetings',
-            JSON.stringify(state.bookedMeetings),
-          );
-        } catch (error) {
-          console.error('Error persisting bookings:', error);
-        }
       }
     },
   },
 
   extraReducers: (builder) => {
     builder
-      // Book Meeting
       .addCase(bookMeeting.pending, (state) => {
         console.log('⏳ Booking in progress...');
         state.isBooking = true;
@@ -320,7 +284,6 @@ const bookingSlice = createSlice({
         state.isBooking = false;
         state.bookingSuccess = action.payload;
 
-        // Add to booked meetings
         const newBooking = {
           id: `${action.payload.consultantId}_${action.payload.meetingId}`,
           consultantId: action.payload.consultantId,
@@ -332,7 +295,6 @@ const bookingSlice = createSlice({
           meetingEnd: action.payload.bookingDetails.meetingEnd,
         };
 
-        // Check if already exists (prevent duplicates)
         const existingIndex = state.bookedMeetings.findIndex(
           (booking) => booking.id === newBooking.id,
         );
@@ -343,7 +305,6 @@ const bookingSlice = createSlice({
           state.bookedMeetings.push(newBooking);
         }
 
-        // Persist to localStorage
         if (typeof window !== 'undefined') {
           try {
             localStorage.setItem(
@@ -356,7 +317,6 @@ const bookingSlice = createSlice({
           }
         }
 
-        // Clear selection after successful booking
         state.selectedSlot = null;
         state.selectedConsultant = null;
         state.bookingStep = null;
@@ -365,56 +325,9 @@ const bookingSlice = createSlice({
         state.isBooking = false;
         state.bookingError = action.payload || 'Booking failed';
 
-        // For critical errors, clear the booking step
-        if (
-          action.payload &&
-          (action.payload.includes('duration') ||
-            action.payload.includes('not found') ||
-            action.payload.includes('no longer available') ||
-            action.payload.includes('already been booked'))
-        ) {
-          // For critical errors that require new slot selection, clear everything
-          state.bookingStep = null;
-          state.selectedSlot = null;
-          state.selectedConsultant = null;
-        } else {
-          // Keep the selection for retryable errors like network issues or conflicts
-          state.bookingStep = 'confirmation';
-        }
-      })
-
-      // Cancel Meeting
-      .addCase(cancelMeeting.pending, (state) => {
-        console.log('⏳ Cancellation in progress...');
-        state.isBooking = true;
-        state.bookingError = null;
-      })
-      .addCase(cancelMeeting.fulfilled, (state, action) => {
-        console.log('✅ Cancellation fulfilled:', action.payload);
-        state.isBooking = false;
-
-        // Remove from booked meetings
-        const bookingId = `${action.payload.consultantId}_${action.payload.meetingId}`;
-        state.bookedMeetings = state.bookedMeetings.filter(
-          (booking) => booking.id !== bookingId,
-        );
-
-        // Persist to localStorage
-        if (typeof window !== 'undefined') {
-          try {
-            localStorage.setItem(
-              'bookedMeetings',
-              JSON.stringify(state.bookedMeetings),
-            );
-            console.log('✅ Cancellation persisted to localStorage');
-          } catch (error) {
-            console.error('Error persisting cancellation:', error);
-          }
-        }
-      })
-      .addCase(cancelMeeting.rejected, (state, action) => {
-        state.isBooking = false;
-        state.bookingError = action.payload || 'Cancellation failed';
+        state.bookingStep = null;
+        state.selectedSlot = null;
+        state.selectedConsultant = null;
       });
   },
 });
@@ -426,7 +339,6 @@ export const {
   setConsultants,
   hydrateBookings,
   resetAllBookings,
-  persistBookings,
 } = bookingSlice.actions;
 
 export default bookingSlice.reducer;

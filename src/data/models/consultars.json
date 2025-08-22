@@ -77,6 +77,16 @@
       "timeZone": "UTC-7",
       "meetings": [
         {
+          "id": "m44",
+          "day": "Monday",
+          "date": "2025-08-25",
+          "start": "2025-08-25T13:40:00",
+          "end": "2025-08-25T14:30:00",
+          "status": "available",
+          "clientName": null,
+          "timeZone": "UTC-4"
+        },
+        {
           "id": "m5",
           "day": "Tuesday",
           "date": "2025-08-26",

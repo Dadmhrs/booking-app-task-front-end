@@ -1,6 +1,6 @@
 import React from 'react';
 
-//Organisms
+// Organisms
 import Header from './Header/header.jsx';
 
 const Layout = ({ children }) => {

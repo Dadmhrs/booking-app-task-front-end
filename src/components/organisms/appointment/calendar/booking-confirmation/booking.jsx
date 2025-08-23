@@ -1,13 +1,7 @@
-import React, { useState, useEffect } from 'react';
 // Atoms
 import ConfirmationOverlay from '@/components/molecules/home/appointment/confirmation-overlay/overlay.jsx';
-// Utils
-import {
-  convertToUserTimezone,
-  validateMeetingDuration,
-  formatDuration,
-  getTimezoneAbbreviation,
-} from '@/utils/timeUtils.js';
+// Hooks
+import useBookingConfirmations from '@/hooks/logics/organisms/appointment/calender/useBookingConfirmation.js';
 
 export const BookingConfirmation = ({
   selectedSlot,
@@ -16,93 +10,35 @@ export const BookingConfirmation = ({
   onCancel,
   isBooking,
 }) => {
-  const [clientName, setClientName] = useState('');
-  const [timeDisplays, setTimeDisplays] = useState(null);
-  const [durationInfo, setDurationInfo] = useState(null);
-  const [isProcessing, setIsProcessing] = useState(false);
-
-  const convertToTimezone = (utcTimeString, targetTimezone) => {
-    try {
-      const utcDate = new Date(utcTimeString);
-
-      if (isNaN(utcDate.getTime())) {
-        console.error('Invalid date string:', utcTimeString);
-        return null;
-      }
-
-      return {
-        timeOnly: utcDate.toLocaleTimeString('en-GB', {
-          timeZone: targetTimezone,
-          hour12: false,
-          hour: '2-digit',
-          minute: '2-digit',
-        }),
-        dateOnly: utcDate.toLocaleDateString('en-US', {
-          timeZone: targetTimezone,
-          year: 'numeric',
-          month: '2-digit',
-          day: '2-digit',
-        }),
-        timezone: targetTimezone,
-      };
-    } catch (error) {
-      console.error('Error converting timezone:', error);
-      return null;
-    }
-  };
-
-  useEffect(() => {
-    if (selectedSlot && selectedSlot.start && selectedSlot.end) {
-      const startTimeClient = convertToUserTimezone(selectedSlot.start, true);
-      const endTimeClient = convertToUserTimezone(selectedSlot.end, true);
-
-      const consultantTimezone = selectedConsultant?.timezone || 'UTC';
-      const startTimeConsultant = convertToTimezone(
-        selectedSlot.start,
-        consultantTimezone,
-      );
-      const endTimeConsultant = convertToTimezone(
-        selectedSlot.end,
-        consultantTimezone,
-      );
-
-      const validation = validateMeetingDuration(
-        selectedSlot.start,
-        selectedSlot.end,
-      );
-
-      setTimeDisplays({
-        start: startTimeConsultant,
-        end: endTimeConsultant,
-        startClient: startTimeClient,
-        endClient: endTimeClient,
-        timezone: consultantTimezone,
-        timezoneClient: startTimeClient?.timezone,
-      });
-
-      setDurationInfo(validation);
-    }
-  }, [selectedSlot, selectedConsultant]);
-
-  const handleConfirm = async () => {
-    if (clientName && clientName.trim()) {
-      setIsProcessing(true);
-      await onConfirm(clientName.trim());
-      setIsProcessing(false);
-    }
-  };
-
-  const handleKeyPress = (e) => {
-    if (e.key === 'Enter' && clientName && clientName.trim()) {
-      handleConfirm();
-    }
-  };
-
-  const isFormValid = clientName && clientName.trim();
-
-  if (isProcessing) {
-    return null;
-  }
+  const {
+    clientName,
+    setClientName,
+    timeDisplays,
+    durationInfo,
+    handleConfirm,
+    handleKeyPress,
+    isFormValid,
+    consultantImage,
+    consultantName,
+    consultantDescription,
+    meetingDateDisplay,
+    consultarTimezoneStartingTime,
+    consultarTimezoneEndingTime,
+    clientTimezoneStartingTime,
+    clientTimezoneEndingTime,
+    clientTimezone,
+    consultarTimezone,
+    durationSettings,
+    priceSettings,
+    notValidForm,
+    notValidFormAndBooking,
+    validFormNotBooking,
+  } = useBookingConfirmations({
+    isBooking,
+    onConfirm,
+    selectedSlot,
+    selectedConsultant,
+  });
 
   if (!timeDisplays) {
     return (
@@ -141,19 +77,19 @@ export const BookingConfirmation = ({
           <div className="flex flex-col sm:flex-row items-center gap-3 p-3 md:p-4 bg-gray-50 rounded-lg">
             <div className="w-20 h-20 md:w-24 md:h-24 lg:w-28 lg:h-28 rounded-full overflow-hidden border-2 border-blue-200 flex-shrink-0">
               <img
-                src={selectedConsultant?.image}
-                alt={selectedConsultant?.name}
+                src={consultantImage}
+                alt={consultantName}
                 className="w-full h-full object-cover"
               />
             </div>
 
             <div className="text-center sm:text-left">
               <h3 className="font-semibold text-gray-900 text-sm md:text-base lg:text-lg">
-                {selectedConsultant?.name}
+                {consultantName}
               </h3>
               <p className="text-xs md:text-sm lg:text-base text-gray-600">
-                {selectedConsultant?.description?.slice(0, 80)}
-                {selectedConsultant?.description?.length > 80 ? '...' : ''}
+                {consultantDescription.slice(0, 80)}
+                {consultantDescription.length > 80 ? '...' : ''}
               </p>
             </div>
           </div>
@@ -170,7 +106,7 @@ export const BookingConfirmation = ({
                 📅 Date:
               </span>
               <p className="text-gray-900 font-semibold text-xs md:text-sm">
-                {timeDisplays.startClient?.dateOnly}
+                {meetingDateDisplay}
               </p>
             </div>
 
@@ -179,8 +115,7 @@ export const BookingConfirmation = ({
                 ⏰ Time (Your Timezone):
               </span>
               <p className="text-gray-900 font-semibold text-xs md:text-sm">
-                {timeDisplays.startClient?.timeOnly} -{' '}
-                {timeDisplays.endClient?.timeOnly}
+                {clientTimezoneStartingTime} - {clientTimezoneEndingTime}
               </p>
             </div>
 
@@ -189,7 +124,7 @@ export const BookingConfirmation = ({
                 ⏰ Time (Consultant's Timezone):
               </span>
               <p className="text-gray-900 font-semibold text-xs md:text-sm">
-                {timeDisplays.start?.timeOnly} - {timeDisplays.end?.timeOnly}
+                {consultarTimezoneStartingTime} - {consultarTimezoneEndingTime}
               </p>
             </div>
 
@@ -198,7 +133,7 @@ export const BookingConfirmation = ({
                 🌍 Your Timezone:
               </span>
               <p className="text-gray-900 font-semibold text-xs md:text-sm">
-                {getTimezoneAbbreviation(timeDisplays.timezoneClient)}
+                {clientTimezone}
               </p>
             </div>
 
@@ -207,7 +142,7 @@ export const BookingConfirmation = ({
                 🌍 Consultant's Timezone:
               </span>
               <p className="text-gray-900 font-semibold text-xs md:text-sm">
-                {getTimezoneAbbreviation(timeDisplays.timezone)}
+                {consultarTimezone}
               </p>
             </div>
 
@@ -220,8 +155,7 @@ export const BookingConfirmation = ({
                   durationInfo?.isValid ? 'text-green-600' : 'text-red-600'
                 }`}
               >
-                {durationInfo?.formattedDuration ||
-                  formatDuration(durationInfo?.duration || 0)}
+                {durationSettings}
               </p>
             </div>
 
@@ -230,7 +164,7 @@ export const BookingConfirmation = ({
                 💰 Price:
               </span>
               <p className="text-green-600 font-semibold text-xs md:text-sm">
-                ${selectedSlot?.price || 150}
+                ${priceSettings}
               </p>
             </div>
           </div>
@@ -253,7 +187,7 @@ export const BookingConfirmation = ({
             className="w-full px-3 py-2 md:px-4 md:py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-colors text-xs md:text-sm"
             disabled={isBooking}
           />
-          {!isFormValid && clientName !== '' && (
+          {notValidForm && (
             <p className="text-red-500 text-xs">Please enter your name</p>
           )}
         </div>
@@ -274,9 +208,9 @@ export const BookingConfirmation = ({
       <div className="p-4 md:p-6 bg-gray-50 rounded-b-xl flex flex-col xs:flex-row gap-2 md:gap-3">
         <button
           onClick={handleConfirm}
-          disabled={!isFormValid || isBooking}
+          disabled={notValidFormAndBooking}
           className={`flex-1 px-3 py-2 md:px-4 md:py-2 rounded-lg font-medium text-xs md:text-sm transition-colors flex items-center justify-center gap-2 ${
-            isFormValid && !isBooking
+            validFormNotBooking
               ? 'bg-blue-600 text-white hover:bg-blue-700'
               : 'bg-gray-300 text-gray-500 cursor-not-allowed'
           }`}

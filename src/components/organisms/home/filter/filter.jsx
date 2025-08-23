@@ -1,27 +1,21 @@
-import React, { useState } from 'react';
 import { Settings } from 'lucide-react';
-//Molecules
+//  Molecules
 import DayTimeFilter from '@/components/molecules/home/filter/day/day.jsx';
 import TimeZoneFilter from '@/components/molecules/home/filter/time-zone/time-zone.jsx';
+// Hooks
+import useFilterDropDown from '@/hooks/logics/organisms/home/useFilterDropdown.js';
 
 const FilterSection = ({ children }) => (
   <div className="py-6 first-of-type:pt-0 last-of-type:pb-0">{children}</div>
 );
 
 const HomePageFilter = ({ onDayChange, onTimeZoneChange }) => {
-  const [isMobileFilterOpen, setIsMobileFilterOpen] = useState(false);
-
-  const handleDayFilterChange = (selectedDay) => {
-    if (onDayChange) {
-      onDayChange(selectedDay);
-    }
-  };
-
-  const handleTimeZoneFilterChange = (selectedTimeZone) => {
-    if (onTimeZoneChange) {
-      onTimeZoneChange(selectedTimeZone);
-    }
-  };
+  const {
+    isMobileFilterOpen,
+    handleDayFilterChange,
+    handleTimeZoneFilterChange,
+    setIsMobileFilterOpen,
+  } = useFilterDropDown({ onDayChange, onTimeZoneChange });
 
   const filters = [
     <DayTimeFilter key="day" onDayChange={handleDayFilterChange} />,
@@ -33,7 +27,6 @@ const HomePageFilter = ({ onDayChange, onTimeZoneChange }) => {
 
   return (
     <>
-      {/* Mobile Filter Button */}
       <div className="lg:hidden mb-6 z-10">
         <div
           className="flex items-center mb-2 cursor-pointer"
@@ -47,7 +40,6 @@ const HomePageFilter = ({ onDayChange, onTimeZoneChange }) => {
         <div className="w-full h-1 bg-gray-400 rounded-full"></div>
       </div>
 
-      {/* Desktop Filter Container */}
       <div
         className={`
           bg-gray-50 p-6 border border-gray-200 shadow-lg rounded-2xl
@@ -63,8 +55,8 @@ const HomePageFilter = ({ onDayChange, onTimeZoneChange }) => {
           </header>
 
           <div className="divide-y divide-gray-200">
-            {filters.map((filter, index) => (
-              <FilterSection key={index}>{filter}</FilterSection>
+            {filters.map((filter) => (
+              <FilterSection key={filter.key}>{filter}</FilterSection>
             ))}
           </div>
         </div>

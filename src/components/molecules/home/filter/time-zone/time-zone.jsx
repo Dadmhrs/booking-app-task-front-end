@@ -1,37 +1,16 @@
-import React, { useState, useEffect } from 'react';
 import { X } from 'lucide-react';
-//Atoms
+// Atoms
 import Dropdown from '@/components/atoms/dropdown-menu/drop-down.jsx';
+// Hooks
+import useTimezoneFilter from '@/hooks/logics/molecules/home/useTimezoneFilter.js';
 
 const TimeZoneFilter = ({ onTimeZoneChange }) => {
-  const [selectedTimeZone, setSelectedTimeZone] = useState('');
-
-  const generateTimeZoneOptions = () => {
-    return [
-      { display: 'UTC-4 (Eastern Daylight Time)', value: 'UTC-4' },
-      { display: 'UTC-7 (Pacific Daylight Time)', value: 'UTC-7' },
-      { display: 'UTC+0 (Greenwich Mean Time)', value: 'UTC+0' },
-      { display: 'UTC+9 (Japan Standard Time)', value: 'UTC+9' },
-    ];
-  };
-
-  const timeZoneOptions = generateTimeZoneOptions();
-
-  const timeZoneDisplayOptions = timeZoneOptions.map((tz) => tz.display);
-
-  useEffect(() => {
-    if (onTimeZoneChange) {
-      const selectedOption = timeZoneOptions.find(
-        (tz) => tz.display === selectedTimeZone,
-      );
-      const timezoneValue = selectedOption ? selectedOption.value : '';
-      onTimeZoneChange(timezoneValue);
-    }
-  }, [selectedTimeZone, onTimeZoneChange, timeZoneOptions]);
-
-  const handleClearSelection = () => {
-    setSelectedTimeZone('');
-  };
+  const {
+    selectedTimeZone,
+    timeZoneDisplayOptions,
+    handleTimeZoneChange,
+    handleClearSelection,
+  } = useTimezoneFilter({ onTimeZoneChange });
 
   return (
     <div className="space-y-4">
@@ -44,7 +23,7 @@ const TimeZoneFilter = ({ onTimeZoneChange }) => {
         <Dropdown
           options={timeZoneDisplayOptions}
           value={selectedTimeZone}
-          onChange={setSelectedTimeZone}
+          onChange={handleTimeZoneChange}
           placeholder="Select time zone..."
           className="w-full"
         />

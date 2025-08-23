@@ -1,5 +1,7 @@
-import React, { useEffect, useState } from 'react';
+import React from 'react';
 import { createPortal } from 'react-dom';
+// Hooks
+import useConfirmationOverlay from '@/hooks/logics/molecules/home/useConfirmationOverlay.js';
 
 const ConfirmationOverlay = ({
   isOpen,
@@ -8,23 +10,14 @@ const ConfirmationOverlay = ({
   maxWidth = 'max-w-md',
   closeOnBackdropClick = true,
 }) => {
-  const [mounted, setMounted] = useState(false);
+  const {
+    isOpen: open,
+    mounted,
+    handleBackdropClick,
+    handleContentClick,
+  } = useConfirmationOverlay({ isOpen, onClose, closeOnBackdropClick });
 
-  useEffect(() => {
-    setMounted(true);
-  }, []);
-
-  if (!isOpen || !mounted) return null;
-
-  const handleBackdropClick = (e) => {
-    if (closeOnBackdropClick && e.target === e.currentTarget) {
-      onClose();
-    }
-  };
-
-  const handleContentClick = (e) => {
-    e.stopPropagation();
-  };
+  if (!open || !mounted) return null;
 
   const overlayContent = (
     <div

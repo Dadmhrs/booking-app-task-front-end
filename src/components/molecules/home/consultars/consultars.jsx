@@ -1,6 +1,5 @@
 import React from 'react';
-
-//Routing
+// Routing
 import Link from 'next/link';
 import routes from '@/configs/routes';
 

@@ -1,4 +1,5 @@
 import React from 'react';
+// Hooks
 import useCalendarDay from '@/hooks/logics/calendar/useCalendarDay.js';
 
 export const CalendarDay = ({
@@ -136,10 +137,8 @@ export const CalendarDay = ({
                 : 'cursor-default'
             }`}
           >
-            {/* Time Display - همیشه در یک خط */}
             <div className="flex items-center justify-between mb-1 xs:mb-1.5">
               <div className="flex items-center gap-1 xs:gap-2 flex-1 min-w-0">
-                {/* Avatar - فقط در حالت دسکتاپ */}
                 <div className="w-4 h-4 xs:w-5 xs:h-5 sm:w-6 sm:h-6 rounded-full overflow-hidden border border-white shadow-sm flex-shrink-0 hidden lg:block">
                   <img
                     src={
@@ -150,7 +149,6 @@ export const CalendarDay = ({
                   />
                 </div>
 
-                {/* Time Range - در یک خط قابل انعطاف */}
                 <div className="flex items-center gap-0.5 xs:gap-1 flex-wrap min-w-0">
                   <span className="font-mono font-semibold text-[8px] xs:text-[9px] sm:text-xs md:text-sm tracking-tight whitespace-nowrap">
                     {slotData.startingTime}
@@ -163,7 +161,6 @@ export const CalendarDay = ({
                   </span>
                 </div>
 
-                {/* Consultant Name - فقط در حالت week/day و در سایز بزرگتر */}
                 {isDayOrWeek && (
                   <span className="text-[8px] xs:text-[9px] sm:text-xs font-medium hidden sm:inline truncate max-w-[80px] lg:max-w-[120px]">
                     {slotData.consultant.name}
@@ -171,7 +168,6 @@ export const CalendarDay = ({
                 )}
               </div>
 
-              {/* Status Indicator */}
               {statusReserved(slotData) && (
                 <div
                   className={`text-[6px] xs:text-[7px] sm:text-[8px] text-red-600 font-bold px-1 xs:px-1.5 py-0.5 rounded-full flex-shrink-0 ${
@@ -185,19 +181,15 @@ export const CalendarDay = ({
               )}
             </div>
 
-            {/* Additional Info - فقط برای week/day view */}
             {isDayOrWeek && (
               <>
-                {/* Consultant Name for Mobile */}
                 <div className="sm:hidden mb-1">
                   <span className="text-[8px] xs:text-[9px] text-gray-600 font-medium truncate block">
                     {slotData.consultant.name}
                   </span>
                 </div>
 
-                {/* Meta Information */}
                 <div className="flex flex-wrap items-center gap-0.5 xs:gap-1 text-[6px] xs:text-[7px] sm:text-[8px]">
-                  {/* Duration */}
                   <span
                     className={`opacity-75 px-1 xs:px-1.5 py-0.5 rounded-full whitespace-nowrap ${
                       slotData.finalStatus === 'reserved'
@@ -208,7 +200,6 @@ export const CalendarDay = ({
                     {slotData.duration}
                   </span>
 
-                  {/* Timezone */}
                   <span
                     className={`opacity-75 px-1 xs:px-1.5 py-0.5 rounded-full whitespace-nowrap ${
                       slotData.finalStatus === 'reserved'
@@ -221,7 +212,6 @@ export const CalendarDay = ({
                       : slotData.clientTimezone.replace('_', ' ')}
                   </span>
 
-                  {/* Client Name for Reserved */}
                   {reservedAndClientName(slotData) && (
                     <span className="opacity-90 bg-red-200 text-red-900 px-1 xs:px-1.5 py-0.5 rounded-full whitespace-nowrap font-semibold">
                       {slotData.isRealTimeBooked ? '🔴' : ''}{' '}
@@ -230,7 +220,6 @@ export const CalendarDay = ({
                   )}
                 </div>
 
-                {/* Consultant Time - فقط برای سایزهای بزرگتر */}
                 {slotData.slot.consultantStartTime &&
                   slotData.slot.consultantEndTime && (
                     <div className="text-[6px] xs:text-[7px] sm:text-[8px] opacity-50 mt-1 hidden sm:block">

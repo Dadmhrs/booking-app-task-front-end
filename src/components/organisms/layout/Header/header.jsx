@@ -1,15 +1,10 @@
 'use client';
-import React, { useState, useEffect } from 'react';
-//Hooks
-import useWindowSize from '@/hooks/custom/useWindowsSize';
+
+// Hooks
+import useHeader from '@/hooks/logics/organisms/header/useHeader.js';
 
 const Header = () => {
-  const { width } = useWindowSize();
-  const [isClient, setIsClient] = useState(false);
-
-  useEffect(() => {
-    setIsClient(true);
-  }, []);
+  const { isClient, isDesktop } = useHeader();
 
   if (!isClient) {
     return (
@@ -27,8 +22,6 @@ const Header = () => {
       </header>
     );
   }
-
-  const isDesktop = width > 767;
 
   return (
     <header className="bg-blue-500 text-white shadow-md">

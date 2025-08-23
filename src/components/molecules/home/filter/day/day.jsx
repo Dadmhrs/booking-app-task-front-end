@@ -1,36 +1,13 @@
-import React, { useState, useEffect } from 'react';
 import { X } from 'lucide-react';
 
-//Atoms
+// Atoms
 import Dropdown from '@/components/atoms/dropdown-menu/drop-down.jsx';
+// Hooks
+import useDayFilter from '@/hooks/logics/molecules/home/useDayFilter.js';
 
 const DayTimeFilter = ({ onDayChange }) => {
-  const [selectedTime, setSelectedTime] = useState('');
-
-  const generateTimeOptions = () => {
-    return [
-      'Saturday',
-      'Sunday',
-      'Monday',
-      'Tuesday',
-      'Wednesday',
-      'Thursday',
-      'Friday',
-    ];
-  };
-
-  const timeOptions = generateTimeOptions();
-
-  // Notify parent component when selected day changes
-  useEffect(() => {
-    if (onDayChange) {
-      onDayChange(selectedTime);
-    }
-  }, [selectedTime, onDayChange]);
-
-  const handleClearSelection = () => {
-    setSelectedTime('');
-  };
+  const { selectedTime, timeOptions, handleTimeChange, handleClearSelection } =
+    useDayFilter({ onDayChange });
 
   return (
     <div className="space-y-4">
@@ -43,7 +20,7 @@ const DayTimeFilter = ({ onDayChange }) => {
         <Dropdown
           options={timeOptions}
           value={selectedTime}
-          onChange={setSelectedTime}
+          onChange={handleTimeChange}
           placeholder="Choose a day..."
           className="w-full"
         />

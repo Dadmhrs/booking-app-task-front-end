@@ -1,16 +1,8 @@
-import React, { useState, useEffect } from 'react';
+// Hooks
+import useDayHeader from '@/hooks/logics/molecules/calendar/useDayHeader.js';
 
 export const DayHeader = () => {
-  const dayNames = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
-  const mobileDayNames = ['S', 'M', 'T', 'W', 'T', 'F', 'S'];
-  const [isMobile, setIsMobile] = useState(false);
-
-  useEffect(() => {
-    const checkMobile = () => setIsMobile(window.innerWidth < 1024);
-    checkMobile();
-    window.addEventListener('resize', checkMobile);
-    return () => window.removeEventListener('resize', checkMobile);
-  }, []);
+  const { dayNames, mobileDayNames, isMobile } = useDayHeader();
 
   return (
     <div className="grid grid-cols-7 bg-gray-50 border-b border-gray-200">

@@ -1,17 +1,11 @@
 'use client';
-// Next
-import { useParams } from 'next/navigation';
 // Organisms
 import { CalendarLayout } from './calendar/calendar.jsx';
-// Redux
-import { useAppSelector } from '@/hooks/redux/useRedux.js';
+// Hooks
+import useAppointmentPage from '@/hooks/logics/templates/appointment/useAppointmentPage.js';
 
 const Appointment = () => {
-  const params = useParams();
-  const consultantId = parseInt(params.id);
-
-  const consultants = useAppSelector((state) => state.consultants.consultants);
-  const error = useAppSelector((state) => state.consultants.error);
+  const { consultantId, consultants, error } = useAppointmentPage();
 
   if (error) {
     return (

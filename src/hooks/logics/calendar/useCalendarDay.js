@@ -1,6 +1,9 @@
 import { useState, useEffect } from 'react';
-import { useAppSelector } from '../../redux/useRedux';
-import { ViewType } from '@/types/calendar';
+// Redux
+import { useAppSelector } from '../../redux/useRedux.js';
+// Types
+import { ViewType } from '@/types/calendar.js';
+// Utils
 import { dateUtils } from '@/utils/dateUtils.js';
 
 const useCalendarDay = ({ day, view, slots, selectedSlotId }) => {
@@ -39,17 +42,14 @@ const useCalendarDay = ({ day, view, slots, selectedSlotId }) => {
 
   const isDayOrWeek = isWeekView || isDayView;
 
-  // تابع برای پردازش slotها
   const processSlotData = (slotData) => {
     const slot = slotData.slot;
     const consultant = slotData.consultant;
     const isSelected = selectedSlotId === slot.id;
 
-    // Check real-time booking status from Redux
     const isRealTimeBooked = isSlotBooked(slot.id, consultant.id);
     const realTimeClientName = getBookedClientName(slot.id, consultant.id);
 
-    // Determine final status - prioritize Redux state over slot data
     const finalStatus = isRealTimeBooked ? 'reserved' : slot.status;
     const finalClientName = realTimeClientName || slot.clientName;
 
@@ -94,7 +94,6 @@ const useCalendarDay = ({ day, view, slots, selectedSlotId }) => {
 
     const duration = dateUtils.calculateDuration(slot.start, slot.end);
 
-    // اضافه کردن startingTime و endingTime به آبجکت برگشتی
     const startingTime =
       slot.clientStartTime ||
       dateUtils.convertToClientTimezone(slot.start)?.time ||

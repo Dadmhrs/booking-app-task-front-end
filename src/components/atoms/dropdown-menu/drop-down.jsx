@@ -1,8 +1,7 @@
-import { useState, useRef } from 'react';
 import { ChevronDown } from 'lucide-react';
 
 //Hooks
-import { useClickOutside } from '@/hooks/custom/useClickOutside.js';
+import useDropdown from '@/hooks/logics/atoms/drop-down/useDropDown.js';
 
 const Dropdown = ({
   options = [],
@@ -12,18 +11,10 @@ const Dropdown = ({
   className = '',
   onClickOutside = () => {},
 }) => {
-  const [isOpen, setIsOpen] = useState(false);
-  const dropdownRef = useRef(null);
-
-  useClickOutside(dropdownRef, () => {
-    setIsOpen(false);
-    onClickOutside();
+  const { isOpen, setIsOpen, dropdownRef, handleSelect } = useDropdown({
+    onChange,
+    onClickOutside,
   });
-
-  const handleSelect = (option) => {
-    onChange(option);
-    setIsOpen(false);
-  };
 
   return (
     <div ref={dropdownRef} className={`relative ${className}`}>
